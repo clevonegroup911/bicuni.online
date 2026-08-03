@@ -12,7 +12,8 @@ test.afterAll(async () => {
   await db.$disconnect();
 });
 
-test("inscription, vérification, connexion, session et déconnexion", async ({ page }) => {
+test("inscription, vérification, connexion, session et déconnexion", async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== "desktop", "Le parcours Auth avec écritures en base ne doit être exécuté qu’une fois.");
   await page.goto("/signup");
   await page.getByLabel("Nom complet").fill("Utilisateur E2E");
   await page.getByLabel("Adresse e-mail").fill(email);
