@@ -1,0 +1,6 @@
+export type SearchSort="relevance"|"recent"|"views"|"downloads"|"citations"|"alphabetical";
+export type SearchFilters={university?:string;faculty?:string;department?:string;author?:string;language?:string;country?:string;year?:number;category?:string;type?:string;status?:string;license?:string};
+export type SearchQuery={query:string;page:number;pageSize:number;sort:SearchSort;filters:SearchFilters};
+export type AcademicSearchDocument={id:string;kind:"document";title:string;abstract:string;authorId:string;authorName:string;universityId:string|null;universityName:string|null;facultyId:string|null;facultyName:string|null;departmentId:string|null;departmentName:string|null;country:string|null;language:string;year:number|null;academicYear:string;category:string;type:string;status:string;license:string;tags:string[];publishedAt:number;viewCount:number;downloadCount:number;favoriteCount:number;citationCount:number};
+export type DirectorySearchDocument={id:string;kind:"researcher"|"author"|"university"|"faculty"|"department";name:string;subtitle:string;country:string|null;universityName:string|null;searchableText:string};
+export type SearchResponse={documents:AcademicSearchDocument[];directory:DirectorySearchDocument[];totalDocuments:number;totalDirectory:number;processingTimeMs:number;facets:Record<string,Record<string,number>>;page:number;pageSize:number};

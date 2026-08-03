@@ -1,0 +1,4 @@
+import type{SearchFilters,SearchSort}from"./types";
+export function buildFilters(filters:SearchFilters){const map:Record<string,string|number|undefined>={universityName:filters.university,facultyName:filters.faculty,departmentName:filters.department,authorName:filters.author,language:filters.language,country:filters.country,year:filters.year,category:filters.category,type:filters.type,status:filters.status,license:filters.license};return Object.entries(map).filter((entry):entry is[string,string|number]=>entry[1]!==undefined&&entry[1]!=="").map(([key,value])=>`${key} = ${typeof value==="number"?value:quote(value)}`)}
+export function quote(value:string){return`"${value.replace(/\\/g,"\\\\").replace(/"/g,'\\"')}"`}
+export function sortRule(sort:SearchSort){return({relevance:undefined,recent:"publishedAt:desc",views:"viewCount:desc",downloads:"downloadCount:desc",citations:"citationCount:desc",alphabetical:"title:asc"}as const)[sort]}

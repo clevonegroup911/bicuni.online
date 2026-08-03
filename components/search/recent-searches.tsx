@@ -1,0 +1,2 @@
+import{Clock3}from"lucide-react";
+export function RecentSearches({items,onSelect}:{items:{query:string;resultCount:number}[];onSelect:(query:string)=>void}){if(!items.length)return null;return <section className="search-memory"><span className="eyebrow"><Clock3 size={13}/>Recherches récentes</span><div>{items.map(item=><button key={item.query} onClick={()=>onSelect(item.query)}>{item.query}<small>{item.resultCount}</small></button>)}</div></section>}

@@ -1,0 +1,411 @@
+html{-ms-text-size-adjust:100%;-webkit-text-size-adjust:100%}body{margin:0}
+nav
+{
+	font-weight: bold;
+	font-family: Tahoma;
+	font-size: 2em;
+}
+nav a
+{
+	font-size: 1em;
+	color: white;
+	padding-bottom: 3px;
+	text-decoration: none;
+	text-align: center;
+
+}
+nav a:hover
+{
+	color: white;
+	border-bottom: 1px solid white;
+	background-color: black;
+	font-weight: bold;
+}
+nav a:active
+{
+	color: white;
+	font-weight: bold;
+}
+nav a:focus
+{
+	background-color: #A0A0A0;
+	font-weight: bold;
+}
+nav ul
+{
+	list-style-type: none;
+	background-color: black;
+	text-align: center;
+	margin: 0;
+}
+nav li
+{
+	display: inline-block;
+	margin-right: 50px;
+	margin-left: 50px;
+}
+body 
+{
+	background-color: white;
+	font-family: arial;
+}
+form
+{
+	margin-left: 90px;
+	position: absolute;
+	top: 170px;
+}
+#recherche
+{
+	border: 2px solid #0000e6;
+	height: 50px;
+	width: 90%;
+	border-radius: 15px; 
+	font-family: arial;
+	font-weight: normal;
+	font-size: 1.6em;
+	padding: 3px 4px 3px 15px;
+}
+.bicu
+{
+	position: absolute;
+	top: 25px;
+	margin-left: 20px;
+}
+.rr
+{
+	position: absolute;
+	top: 75px;
+	margin-left: 50px;
+}
+#submit
+{
+	color: white;
+	position: absolute;
+	right: 0%;
+	height: 60px;
+	border-radius: 15px;
+	border: 1px solid #0000e6;
+	background-color:#3333ff; 
+	margin-top: 1px;
+	font-family: arial;
+	font-size: 1.6em;
+}
+#submit:hover 
+{
+	background-color:#e6e6ff;   
+  	color: #0000e6;   
+  	cursor: pointer;  
+}
+.slides
+{
+	max-width:500px;
+}
+.mySlides 
+{
+	display:none;
+	width: 100%;
+	border-radius: 10px;
+	border: 5px solid #F8F8F8;
+	width: 580px;
+	height: 590px;
+	-webkit-animation:opac 4s;
+	animation:opac 4s;
+}
+section
+{
+	width: 50%;
+	padding-left: 50px;
+
+}
+#titre
+{
+	color: #0b05f7;
+	font-weight: bold;
+}
+.abonner
+{
+	position: absolute;
+	left: 700px;
+	background-color: blue;
+	color: white;
+	height: 50px;
+	width: 120px;
+	font-size: 1em;
+	font-family: arial;
+}
+.abonner:hover
+{
+	background-color:#e6e6ff;   
+  	color: #0000e6;   
+  	cursor: pointer;
+}
+#valide
+{
+	position: absolute;
+	bottom: 2%;
+}
+#retour, #enreg, #submit1, #connect
+{
+	color:#0000e6;
+	text-decoration: none;
+	font-family: Arial;
+	font-size: 1.2em;
+	height: 30px;
+}
+#retour:hover, #enreg:hover, #submit1:hover, #connect:hover
+{
+	cursor: pointer;
+	color: black;
+	font-weight: bolder;
+}
+#rechercheb
+{
+	position: absolute;
+	top: 3%;
+	margin-left: 5px;
+}
+#mode
+{
+	position: absolute;
+	top: 10%;
+	left: 10%;	
+}
+#mode a
+{
+	text-decoration: none;
+	color: blue;
+	font-size: 1.5em;
+}
+#mode a:hover
+{
+	color: white;
+	font-weight: bolder;
+}
+#mode a:focus
+{
+	border-bottom: 2px solid white;
+	color: white;
+	font-weight: bold;
+}
+.menus
+{
+	position: absolute;
+	top: 10.5%;
+	left: 0%;
+	padding-left: 4%;
+	padding-top: 3%;
+	
+}
+.menus a
+{
+	text-decoration: none;
+	color: blue;
+	font-size: 1.6em;
+	font-weight: bold;
+}
+.menus a:hover
+{
+	color: red;
+}
+#connexion
+{
+	background-color: blue;
+	width: 100%;
+	height: 13%;
+	position: absolute;
+	top: 6%;
+}
+.connexion, .abonner
+{
+	position: absolute;
+	top: 30%;
+}
+.sous_menus
+{
+	background-color: blue;
+	width: 100%;
+	height: 13%;
+	position: absolute;
+	top: 10%;
+}
+.sous_menus a
+{
+	text-decoration: none;
+	color: white;
+	font-size: 1em;
+	font-weight: bold;
+	padding-left: 3%;
+	padding-top: 2%;
+	display: inline-block;
+}
+.sous_menus a:hover
+{
+	color: red;
+}
+.article
+{
+	position: absolute;
+	left: 0%;
+	top: 19%;
+	height: 130%;
+	width: 20%;
+	background-color: black;
+}
+.section
+{
+	position: absolute;
+	right: 10%;
+	top: 23%;
+	padding: 2% 20% 2% 2%;
+}
+#form
+{
+	background-color: #f2f2f2;
+	margin-left: 8%;
+	top: 10.3%;
+	padding-top: 5%;
+	padding-bottom: 5%;
+	padding-left: 5%;
+	width: 80%;
+	height: 90%;
+	color: blue;
+}
+#code
+{
+	width: 7%;
+	font-size: 1em;
+}
+.formright
+{
+	position: absolute;
+	left: 50%;
+	font-size: 1em;
+}
+.formright1
+{
+	position: absolute;
+	left: 70%;
+	font-size: 1em;
+}
+.tel
+{
+	position: absolute;
+	left: 78%;
+	font-size: 1em;
+}
+.formleft
+{
+	position: absolute;
+	left: 20%;
+	font-size: 1em;
+}
+
+div.img {
+		    margin: 5px;
+		    border: 1px solid #000;
+		    float: left;
+		    width: 180px;
+		    margin-left: 20px;
+		    margin-top: 20px;
+		}	
+
+		div.img:hover {
+		    border: 1px solid #777;
+		}
+
+		div.img img {
+		    width: 100%;
+		    height: 150px;
+		}
+
+		div.desc {
+		    padding: 15px;
+		    text-align: center;
+		}
+		/*Pied de page */
+		footer ul, footer
+{
+	font-size: 1em;
+	font-family: tahoma;
+}
+footer
+{
+	background: blue;
+	background-attachment: scroll;
+	padding-top: 25px;
+	position: absolute;
+	top: 150%;
+	width: 100%;
+}
+h1
+{
+	font-size: 1.5em;
+	color: black;
+	text-align: justify;
+	padding-left: 20%;
+}
+
+		#propos, #suivez, #partenaires
+{
+	display: inline-block;
+	vertical-align: top;
+}
+#propos ul, #suivez ul, #partenaires ul
+{
+	display: block;
+	vertical-align: top;
+	margin-top: 0;
+	padding-left: 20%;
+	text-align: justify;
+	width: 100%;
+}
+#propos
+{
+	width: 20%;
+	padding-left: 10%;
+}
+#partenaires
+{
+	width: 20%;
+}
+#partenaires li
+{
+	display: block;
+}
+#suivez
+{
+	width: 40%;
+}
+#suivez li
+{
+	display: inline;
+}
+#biblio a
+{
+	text-decoration: none;
+	color: #ffe6e6;
+}
+#biblio ul
+{
+	list-style-type: none;
+}
+
+}
+#biblio a:hover
+{
+	color: black;
+	border-bottom: 2px solid white;
+}
+#biblio a:active
+{
+	color: black;
+	font-weight: bold;
+}
+#biblio a:focus
+{
+	background-color: black;
+	font-weight: bold;
+}
+
+

@@ -1,0 +1,2 @@
+import { AcademicDocumentCard, type DocumentSummary } from "@/components/documents/document-card";
+export function DocumentGrid({ documents }: { documents: DocumentSummary[] }) { if (!documents.length) return <div className="glass card empty-state">Aucun document ne correspond à cette recherche.</div>; return <div className="grid3">{documents.map((document) => <AcademicDocumentCard key={document.id} document={document}/>)}</div>; }

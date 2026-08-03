@@ -1,0 +1,36 @@
+# Local environment and credentials
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# Dependencies and generated output
+node_modules/
+.next/
+coverage/
+playwright-report/
+test-results/
+tsconfig.tsbuildinfo
+
+# Local tooling
+.DS_Store
+*.log
+
+# Secrets
+.env
+.env.local
+.env.*.local
+
+# Next.js
+.next/
+out/
+
+# Dependencies
+node_modules/
+
+# Logs
+*.log
+
+# Local credentials
+credentials.json
+service-account*.json

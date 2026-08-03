@@ -1,0 +1,2 @@
+import type{LucideIcon}from"lucide-react";
+export function DashboardStatistics({items}:{items:{icon:LucideIcon;value:string;label:string;trend?:string}[]}){return <section className="dashboard-stats" aria-label="Statistiques">{items.map(({icon:Icon,value,label,trend})=><article className="glass card dashboard-stat" key={label}><div><Icon size={18}/>{trend&&<small>{trend}</small>}</div><strong>{value}</strong><span>{label}</span></article>)}</section>}

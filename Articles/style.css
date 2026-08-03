@@ -1,0 +1,227 @@
+
+body 
+{
+	background-color: white;
+	font-family: arial;
+	width: 100%;
+	height: 100%;
+}
+.menus
+{
+	position: absolute;
+	top: 0%;
+	left: 0%;
+	padding-left: 2%;
+	padding-top: 2%;
+	padding-right: 2%;
+	background-color:#f2f2f2;
+	height: 100%; 
+	
+}
+.menus a
+{
+	text-decoration: none;
+	color: blue;
+	font-size: 1.6em;
+	font-weight: bold;
+}
+.menus a:hover
+{
+	color: red;
+}
+#rechercheb
+{
+	position: absolute;
+	top: 5%;
+	left: 25%;
+}
+#submit1:hover
+{
+	cursor: pointer;
+	color: black;
+	font-weight: bolder;
+}
+.Art_pagination
+{
+	position: absolute;
+	left: 20%;
+	bottom: 3%;
+}
+.Art_pagination ul
+{
+	list-style-type: none;
+}
+.Art_pagination li
+{
+	display: inline-block;
+	margin-left: 20px;
+}
+.Art_pagination a
+{
+	color: black;
+	text-decoration: none;
+	font-family: tahoma;
+	font-size: 2em;
+}
+.Art_pagination a:hover
+{
+	color: blue;
+	font-weight: bolder;
+}
+.Art_pagination a:focus
+{
+	border-bottom: 2px solid blue;
+	color: blue;
+	font-weight: bold;
+}
+div.IconesArticles 
+{
+		   
+    width: 200px;
+    position: absolute;
+    left: 20%;
+    top: 10%;
+}	
+
+div.IconesArticles:hover 
+{
+    color: red;
+    cursor: pointer;
+}
+.menus1
+{
+	position: absolute;
+	top: 10%;
+	left: 0%;
+	border-right: 1px solid blue;
+	padding-left: 2%;
+	padding-top: 1%;
+	padding-right: 2%;
+	background-color:#f2f2f2;
+	height: 150%; 
+	
+}
+.menus1 a
+{
+	text-decoration: none;
+	color: blue;
+	font-size: 0.8em;
+	font-weight: bold;
+}
+.menus1 a:hover
+{
+	color: black;
+}
+.menus2
+{
+	position: absolute;
+	top: 10%;
+	right: 0%;
+	border-left: 1px solid blue;
+	padding-left: 2%;
+	padding-top: 1%;
+	padding-right: 2%;
+	background-color:#f2f2f2;
+	height: 150%; 
+	width: 14%;
+	
+}
+.menus2 a
+{
+	text-decoration: none;
+	color: blue;
+	font-size: 0.8em;
+	font-weight: bold;
+}
+.menus2 a:hover
+{
+	color: black;
+}
+.sous_menus
+{
+	background-color: #f2f2f2;
+	border-bottom: 1px solid blue;
+	width: 80%;
+	height: 10%;
+	position: absolute;
+	top: 0%;
+	left: 0%;
+	padding-left: 20%;
+}
+.sous_menus a
+{
+	text-decoration: none;
+	color: blue;
+	font-size: 1.6em;
+	font-weight: bold;
+	padding-left: 3%;
+	padding-top: 1%;
+	display: inline-block;
+}
+.sous_menus a:hover
+{
+	color: black;
+}
+.sous_menus a:focus
+{
+	color: black;
+	font-weight: bold;
+}
+.contenu_article
+{
+	position: absolute;
+	top: 10%;
+	left: 13%;
+	right: 17%;
+	padding-left: 2%;
+	padding-right: 2%;
+}
+#titre
+{
+	color: rgb(80,0,0);
+	font-size: 1.5em;
+	text-align: center;
+}
+#contenu
+{
+	text-align: justify;
+}
+#Auteur
+{
+	color: rgb(80,0,0);
+	text-align: center;
+	margin-left: 30%;
+}
+.portrait
+{
+	color: rgb(80,0,0);
+	font-size: 1.2em;
+}
+#p2
+{
+	padding-left: 13%;
+}
+#p3
+{
+	padding-left: 33%;
+}
+#p4
+{
+	padding-left: 55%;
+}
+#p5
+{
+	padding-left: 60%;
+}
+#p6
+{
+	padding-left: 69%;
+}
+
+
+		
+
+
+
+
+

@@ -1,0 +1,4 @@
+AuthName "Page d'agministration protégée"
+AuthType Basic
+AuthUserFile "home/site/www/Bibliothèque_centrale/news/.htpasswd"
+Require valid-user

@@ -1,0 +1,1 @@
+export function PDFPreview({ url, title }: { url?: string; title: string }) { return url ? <iframe className="pdf-preview glass" src={url} title={`Prévisualisation de ${title}`}/> : <div className="pdf-preview glass empty-state">Connectez-vous pour prévisualiser ce fichier privé.</div>; }

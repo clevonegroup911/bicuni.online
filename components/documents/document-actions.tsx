@@ -1,0 +1,8 @@
+"use client";
+import { Bookmark, Download, Share2, Trash2 } from "lucide-react";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+export function DownloadButton({ fileId }: { fileId: string }) { const [busy,setBusy]=useState(false); return <button className="button" disabled={busy} onClick={async()=>{setBusy(true);const r=await fetch(`/api/documents/files/${fileId}?action=download`);const j=await r.json() as {url?:string};if(j.url) location.assign(j.url);setBusy(false);}}><Download size={17}/>Télécharger</button>; }
+export function FavoriteButton({ documentId }: { documentId: string }) { const [active,setActive]=useState(false); return <button className="button secondary" aria-pressed={active} onClick={async()=>{const r=await fetch(`/api/documents/${documentId}/favorite`,{method:"PATCH"});if(r.ok)setActive((await r.json() as {favorite:boolean}).favorite);}}><Bookmark size={17} fill={active?"currentColor":"none"}/>Favori</button>; }
+export function ShareButton({ title }: { title: string }) { return <button className="button secondary" onClick={()=>navigator.share?navigator.share({title,url:location.href}):navigator.clipboard.writeText(location.href)}><Share2 size={17}/>Partager</button>; }
+export function DeleteDocumentButton({documentId}:{documentId:string}){const router=useRouter();return <button className="button red" onClick={async()=>{if(!confirm("Supprimer ce brouillon ?"))return;const response=await fetch(`/api/documents/${documentId}`,{method:"DELETE"});if(response.ok){router.push("/dashboard/documents");router.refresh();}}}><Trash2 size={17}/>Supprimer</button>}

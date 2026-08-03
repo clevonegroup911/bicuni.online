@@ -1,0 +1,4 @@
+import Link from "next/link";
+import type { DocumentStatus, DocumentType } from "@prisma/client";
+import { StatusBadge } from "@/components/documents/status-badge";
+export function DocumentTable({ documents }: { documents: { id: string; title: string; type: DocumentType; status: DocumentStatus; updatedAt: Date; author?: { name: string | null } }[] }) { return <div className="table-wrap glass"><table className="document-table"><thead><tr><th>Titre</th><th>Type</th><th>Statut</th><th>Mise à jour</th><th/></tr></thead><tbody>{documents.map((document) => <tr key={document.id}><td><strong>{document.title}</strong>{document.author && <small>{document.author.name}</small>}</td><td>{document.type}</td><td><StatusBadge status={document.status}/></td><td>{new Intl.DateTimeFormat("fr-FR").format(document.updatedAt)}</td><td><Link href={`/documents/${document.id}`}>Ouvrir</Link></td></tr>)}</tbody></table></div>; }

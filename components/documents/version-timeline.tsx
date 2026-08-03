@@ -1,0 +1,3 @@
+import type { DocumentStatus } from "@prisma/client";
+import { StatusBadge } from "@/components/documents/status-badge";
+export function VersionTimeline({ events }: { events: { id: string; action: string; version: number; toStatus: DocumentStatus | null; comment: string | null; createdAt: Date }[] }) { return <ol className="version-timeline">{events.map((event) => <li key={event.id}><span>v{event.version}</span><div><strong>{event.action}</strong>{event.toStatus&&<StatusBadge status={event.toStatus}/>}<p>{event.comment}</p><small>{new Intl.DateTimeFormat("fr-FR",{dateStyle:"medium",timeStyle:"short"}).format(event.createdAt)}</small></div></li>)}</ol>; }

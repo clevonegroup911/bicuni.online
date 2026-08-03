@@ -1,0 +1,2 @@
+"use client";
+export function UploadZone({ onFile }: { onFile: (file: File) => void }) { return <label className="upload-zone"><strong>Déposer un PDF ou DOCX</strong><span>Taille maximale : {Math.round(Number(process.env.NEXT_PUBLIC_DOCUMENT_MAX_UPLOAD_BYTES ?? 52428800)/1048576)} Mo</span><input type="file" accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document" required onChange={(event)=>{const file=event.target.files?.[0];if(file)onFile(file);}}/></label>; }

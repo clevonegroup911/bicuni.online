@@ -1,0 +1,12 @@
+ErrorDocument 400 http://localhost/sites/www.bicuni.com/404.php?404=400
+ErrorDocument 401 http://localhost/sites/www.bicuni.com/404.php?404=401
+ErrorDocument 402 http://localhost/sites/www.bicuni.com/404.php?404=402
+ErrorDocument 403 http://localhost/sites/www.bicuni.com/404.php?404=403
+ErrorDocument 404 http://localhost/sites/www.bicuni.com/404.php?404=404
+ErrorDocument 405 http://localhost/sites/www.bicuni.com/404.php?404=405
+ErrorDocument 500 http://localhost/sites/www.bicuni.com/404.php?404=500
+ErrorDocument 501 http://localhost/sites/www.bicuni.com/404.php?404=501
+ErrorDocument 502 http://localhost/sites/www.bicuni.com/404.php?404=502
+ErrorDocument 503 http://localhost/sites/www.bicuni.com/404.php?404=503
+ErrorDocument 504 http://localhost/sites/www.bicuni.com/404.php?404=504
+ErrorDocument 505 http://localhost/sites/www.bicuni.com/404.php?404=505

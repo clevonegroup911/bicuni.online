@@ -1,0 +1,2 @@
+import{SlidersHorizontal}from"lucide-react";import type{SearchFilters as Filters}from"@/lib/search/types";import{SearchFilters}from"@/components/search/search-filters";
+export function SearchSidebar(props:{filters:Filters;facets:Record<string,Record<string,number>>;onChange:(key:keyof Filters,value:string)=>void;onReset:()=>void}){return <aside className="search-sidebar glass"><span className="eyebrow"><SlidersHorizontal size={14}/>Recherche avancée</span><SearchFilters {...props}/></aside>}

@@ -1,0 +1,3 @@
+import{timingSafeEqual}from"node:crypto";import{NextResponse}from"next/server";import{SearchIndexer}from"@/lib/search/indexer";
+export async function POST(request:Request){const expected=process.env.SEARCH_SYNC_SECRET;const received=request.headers.get("authorization")?.replace(/^Bearer\s+/i,"");if(!expected||!received||!sameSecret(expected,received))return NextResponse.json({error:"Accès refusé."},{status:403});return NextResponse.json(await new SearchIndexer().processOutbox())}
+function sameSecret(left:string,right:string){const a=Buffer.from(left);const b=Buffer.from(right);return a.length===b.length&&timingSafeEqual(a,b)}
