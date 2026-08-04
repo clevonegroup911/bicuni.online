@@ -15,8 +15,31 @@ const navigation = [
 
 export function AdminShell({ user, children }: { user: { name: string | null; email: string; role: Role }; children: ReactNode }) {
   const initials = (user.name ?? user.email).split(/\s+/).map((part) => part[0]).join("").slice(0, 2).toUpperCase();
-  return <main className="admin-workspace">
-    <aside className="admin-navigation"><Logo/><div className="admin-brand"><ShieldCheck size={16}/><span>Back Office sécurisé</span></div><nav aria-label="Navigation administrative">{navigation.map(([label, href, Icon]) => <Link href={href} key={href}><Icon size={17}/><span>{label}</span></Link>)}</nav></aside>
-    <section className="admin-content"><header className="admin-header"><div><span className="eyebrow">Centre de contrôle</span><strong>BICUNI Administration</strong></div><div className="admin-identity"><span className="admin-avatar">{initials}</span><span><strong>{user.name ?? "Administrateur"}</strong><small>{user.role}</small></span><LogoutButton/></div></header>{children}</section>
-  </main>;
+  return (
+    <main className="admin-workspace">
+      <aside className="admin-navigation">
+        <Logo />
+        <div className="admin-brand"><ShieldCheck size={16} /><span>Back Office sécurisé</span></div>
+        <nav aria-label="Navigation administrative">
+          {navigation.map(([label, href, Icon]) => (
+            <Link href={href} key={href}><Icon size={17} /><span>{label}</span></Link>
+          ))}
+        </nav>
+      </aside>
+      <section className="admin-content">
+        <header className="admin-header">
+          <div>
+            <span className="eyebrow">Centre de contrôle</span>
+            <strong>BICUNI Administration</strong>
+          </div>
+          <div className="admin-identity">
+            <span className="admin-avatar">{initials}</span>
+            <span><strong>{user.name ?? "Administrateur"}</strong><small>{user.role}</small></span>
+            <LogoutButton />
+          </div>
+        </header>
+        {children}
+      </section>
+    </main>
+  );
 }

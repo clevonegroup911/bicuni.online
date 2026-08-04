@@ -9,8 +9,6 @@ import "./public.css";
 import "./accessibility.css";
 import "./search.css";
 import "./admin.css";
-import { Footer } from "@/components/layout/footer";
-import { Header } from "@/components/layout/header";
 import { ToastProvider } from "@/components/ui/toast";
 
 export const metadata: Metadata = {
@@ -21,5 +19,14 @@ export const metadata: Metadata = {
 export const viewport: Viewport = { themeColor: "#020617", colorScheme: "dark", width: "device-width", initialScale: 1 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  return <html lang="fr"><body><ToastProvider><a className="skip-link" href="#page-content">Aller au contenu</a><Header /><div id="page-content">{children}</div><Footer /></ToastProvider></body></html>;
+  return (
+    <html lang="fr">
+      <body>
+        <ToastProvider>
+          <a className="skip-link" href="#page-content">Aller au contenu</a>
+          {children}
+        </ToastProvider>
+      </body>
+    </html>
+  );
 }
