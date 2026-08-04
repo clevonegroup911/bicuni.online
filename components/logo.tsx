@@ -8,6 +8,6 @@ export function Logo({ compact = false }: { compact?: boolean }) {
       <circle cx="32" cy="32" r="13" fill="none" stroke="#050505" strokeWidth="5"/>
       <circle cx="32" cy="32" r="5" fill="#fff" style={{ filter: "drop-shadow(0 0 7px white)" }}/>
     </svg>
-    {!compact && <span><i style={{ color: "#0B2EFF", fontStyle: "normal" }}>Bi</i><i style={{ color: "#E60012", fontStyle: "normal" }}>cuni</i></span>}
+    {!compact && <span className="logo-wordmark"><i style={{ color: "#0B2EFF", fontStyle: "normal" }}>Bi</i><i style={{ color: "#E60012", fontStyle: "normal" }}>cuni</i></span>}
   </Link>;
 }

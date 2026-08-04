@@ -19,7 +19,7 @@ export async function POST(request: Request) {
   }
 
   await db.$transaction([
-    db.user.update({ where: { email }, data: { emailVerified: new Date() } }),
+    db.user.update({ where: { email }, data: { emailVerified: new Date(), status: "ACTIVE" } }),
     db.verificationToken.delete({ where: { token: tokenHash } }),
   ]);
 
