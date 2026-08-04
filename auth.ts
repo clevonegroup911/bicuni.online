@@ -1,10 +1,15 @@
 import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import { PrismaAdapter } from "@auth/prisma-adapter";
+import { Role } from "@prisma/client";
 import { compare } from "bcryptjs";
 import { db } from "@/lib/db/client";
 import { credentialsSchema } from "@/lib/auth/validators";
 import { logger } from "@/lib/observability/logger";
+
+function isRole(value: unknown): value is Role {
+  return Object.values(Role).some((role) => role === value);
+}
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   adapter: PrismaAdapter(db),
@@ -46,6 +51,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       return token;
     },
     session({ session, token }) {
+      if (typeof token.id !== "string" || !isRole(token.role)) {
+        throw new Error("Le jeton de session contient une identité ou un rôle invalide.");
+      }
       session.user.id = token.id;
       session.user.role = token.role;
       return session;
