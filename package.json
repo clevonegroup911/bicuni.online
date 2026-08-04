@@ -13,6 +13,7 @@
     "db:generate": "prisma generate",
     "db:push": "prisma db push",
     "db:seed:plans": "node scripts/seed-plans.mjs",
+    "admin:init": "tsx scripts/init-super-admin.ts",
     "search:configure": "tsx scripts/configure-search.ts",
     "search:outbox": "prisma db execute --file scripts/search-outbox.sql --schema prisma/schema.prisma",
     "search:reindex": "tsx scripts/reindex-search.ts",

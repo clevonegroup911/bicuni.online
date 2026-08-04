@@ -8,11 +8,22 @@ datasource db {
 }
 
 enum Role {
+  USER
+  ADMIN
+  MODERATOR
+  INSTITUTION_ADMIN
   STUDENT
   RESEARCHER
   UNIVERSITY_ADMIN
   SUPER_ADMIN
   GOVERNMENT
+}
+
+enum UserStatus {
+  ACTIVE
+  PENDING
+  SUSPENDED
+  DELETED
 }
 
 enum DocumentStatus {
@@ -49,387 +60,417 @@ enum PaymentProvider {
 }
 
 model User {
-  id String @id @default(cuid())
-  email String @unique
-  passwordHash String?
-  name String?
-  role Role @default(STUDENT)
-  emailVerified DateTime?
-  image String?
-  stripeCustomerId String? @unique
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  profile Profile?
-  accounts Account[]
-  sessions Session[]
-  subscriptions Subscription[]
-  payments Payment[]
-  documents Document[]
-  reviews Review[]
-  publications Publication[]
-  searchLogs SearchLog[]
-  auditLogs AuditLog[] @relation("AuditActor")
-  universityAdmins University[] @relation("UniversityAdmins")
+  id                  String               @id @default(cuid())
+  email               String               @unique
+  passwordHash        String?
+  name                String?
+  role                Role                 @default(USER)
+  status              UserStatus           @default(PENDING)
+  emailVerified       DateTime?
+  lastLoginAt         DateTime?
+  image               String?
+  stripeCustomerId    String?              @unique
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+  profile             Profile?
+  accounts            Account[]
+  sessions            Session[]
+  subscriptions       Subscription[]
+  payments            Payment[]
+  documents           Document[]
+  reviews             Review[]
+  publications        Publication[]
+  searchLogs          SearchLog[]
+  auditLogs           AuditLog[]           @relation("AuditActor")
+  universityAdmins    University[]         @relation("UniversityAdmins")
   passwordResetTokens PasswordResetToken[]
-  favorites DocumentFavorite[]
-  comments DocumentComment[]
-  documentEvents DocumentHistory[]
+  favorites           DocumentFavorite[]
+  comments            DocumentComment[]
+  documentEvents      DocumentHistory[]
+
+  @@index([role, status, createdAt])
 }
 
 model Account {
-  id String @id @default(cuid())
-  userId String
-  type String
-  provider String
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
   providerAccountId String
-  refresh_token String?
-  access_token String?
-  expires_at Int?
-  token_type String?
-  scope String?
-  id_token String?
-  session_state String?
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@unique([provider, providerAccountId])
 }
+
 model Session {
-  sessionToken String @unique
-  userId String
-  expires DateTime
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
+
 model VerificationToken {
   identifier String
-  token String @unique
-  expires DateTime
+  token      String   @unique
+  expires    DateTime
+
   @@unique([identifier, token])
 }
 
 model PasswordResetToken {
-  id        String   @id @default(cuid())
-  tokenHash String   @unique
+  id        String    @id @default(cuid())
+  tokenHash String    @unique
   userId    String
   expires   DateTime
   usedAt    DateTime?
-  createdAt DateTime @default(now())
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime  @default(now())
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, expires])
 }
 
 model Profile {
-  id String @id @default(cuid())
-  userId String @unique
-  bio String?
-  title String?
-  orcid String? @unique
-  country String?
+  id             String      @id @default(cuid())
+  userId         String      @unique
+  bio            String?
+  title          String?
+  orcid          String?     @unique
+  country        String?
   researchFields String[]
-  website String?
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-  universityId String?
-  university University? @relation(fields: [universityId], references: [id])
-  departmentId String?
-  department Department? @relation(fields: [departmentId], references: [id])
+  website        String?
+  user           User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  universityId   String?
+  university     University? @relation(fields: [universityId], references: [id])
+  departmentId   String?
+  department     Department? @relation(fields: [departmentId], references: [id])
 }
 
 model Plan {
-  id String @id @default(cuid())
-  slug String @unique
-  name String
-  priceCents Int
-  currency String @default("USD")
-  interval String @default("month")
-  features Json
-  active Boolean @default(true)
-  providerPriceId String? @unique
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  subscriptions Subscription[]
+  id              String         @id @default(cuid())
+  slug            String         @unique
+  name            String
+  priceCents      Int
+  currency        String         @default("USD")
+  interval        String         @default("month")
+  features        Json
+  active          Boolean        @default(true)
+  providerPriceId String?        @unique
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  subscriptions   Subscription[]
 }
+
 model Subscription {
-  id String @id @default(cuid())
-  userId String
-  planId String
-  provider PaymentProvider @default(STRIPE)
-  providerRef String? @unique
-  status SubscriptionStatus @default(INCOMPLETE)
-  startedAt DateTime?
-  currentPeriodEnd DateTime?
-  cancelAtPeriodEnd Boolean @default(false)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-  plan Plan @relation(fields: [planId], references: [id])
-  payments Payment[]
-  invoices Invoice[]
+  id                String             @id @default(cuid())
+  userId            String
+  planId            String
+  provider          PaymentProvider    @default(STRIPE)
+  providerRef       String?            @unique
+  status            SubscriptionStatus @default(INCOMPLETE)
+  startedAt         DateTime?
+  currentPeriodEnd  DateTime?
+  cancelAtPeriodEnd Boolean            @default(false)
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  user              User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  plan              Plan               @relation(fields: [planId], references: [id])
+  payments          Payment[]
+  invoices          Invoice[]
+
   @@index([userId, status, currentPeriodEnd])
 }
+
 model Payment {
-  id String @id @default(cuid())
-  userId String
+  id             String          @id @default(cuid())
+  userId         String
   subscriptionId String?
-  provider PaymentProvider
-  providerRef String @unique
-  amountCents Int
-  currency String @default("USD")
-  status String
-  metadata Json?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  user User @relation(fields: [userId], references: [id])
-  subscription Subscription? @relation(fields: [subscriptionId], references: [id])
+  provider       PaymentProvider
+  providerRef    String          @unique
+  amountCents    Int
+  currency       String          @default("USD")
+  status         String
+  metadata       Json?
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  user           User            @relation(fields: [userId], references: [id])
+  subscription   Subscription?   @relation(fields: [subscriptionId], references: [id])
 }
 
 model Invoice {
-  id String @id @default(cuid())
-  subscriptionId String
-  provider PaymentProvider
-  providerRef String @unique
-  number String?
-  amountDueCents Int
-  amountPaidCents Int @default(0)
-  currency String @default("USD")
-  status String
-  hostedUrl String?
-  pdfUrl String?
-  periodStart DateTime?
-  periodEnd DateTime?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  subscription Subscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+  id              String          @id @default(cuid())
+  subscriptionId  String
+  provider        PaymentProvider
+  providerRef     String          @unique
+  number          String?
+  amountDueCents  Int
+  amountPaidCents Int             @default(0)
+  currency        String          @default("USD")
+  status          String
+  hostedUrl       String?
+  pdfUrl          String?
+  periodStart     DateTime?
+  periodEnd       DateTime?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  subscription    Subscription    @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
 
   @@index([subscriptionId, createdAt])
 }
 
 model WebhookEvent {
-  id String @id @default(cuid())
-  provider PaymentProvider
+  id              String          @id @default(cuid())
+  provider        PaymentProvider
   providerEventId String
-  eventType String
-  processedAt DateTime @default(now())
+  eventType       String
+  processedAt     DateTime        @default(now())
 
   @@unique([provider, providerEventId])
 }
 
 model University {
-  id String @id @default(cuid())
-  name String
-  slug String @unique
-  country String
-  domain String?
-  logoUrl String?
+  id        String     @id @default(cuid())
+  name      String
+  slug      String     @unique
+  country   String
+  domain    String?
+  logoUrl   String?
   faculties Faculty[]
-  profiles Profile[]
+  profiles  Profile[]
   documents Document[]
-  admins User[] @relation("UniversityAdmins")
+  admins    User[]     @relation("UniversityAdmins")
 }
+
 model Faculty {
-  id String @id @default(cuid())
-  name String
+  id           String       @id @default(cuid())
+  name         String
   universityId String
-  university University @relation(fields: [universityId], references: [id], onDelete: Cascade)
-  departments Department[]
-  documents Document[]
+  university   University   @relation(fields: [universityId], references: [id], onDelete: Cascade)
+  departments  Department[]
+  documents    Document[]
+
   @@unique([universityId, name])
 }
+
 model Department {
-  id String @id @default(cuid())
-  name String
+  id        String     @id @default(cuid())
+  name      String
   facultyId String
-  faculty Faculty @relation(fields: [facultyId], references: [id], onDelete: Cascade)
-  profiles Profile[]
+  faculty   Faculty    @relation(fields: [facultyId], references: [id], onDelete: Cascade)
+  profiles  Profile[]
   documents Document[]
+
   @@unique([facultyId, name])
 }
 
 model Document {
-  id String @id @default(cuid())
-  slug String @unique
-  title String
-  abstract String?
-  language String @default("fr")
-  type DocumentType @default(ARTICLE)
-  license String @default("Tous droits réservés")
-  promotion String?
-  academicYear String @default("Non renseignée")
-  year Int?
-  status DocumentStatus @default(DRAFT)
-  authorId String
-  universityId String?
-  facultyId String?
-  departmentId String?
-  categoryId String
-  metadata Json?
-  viewCount Int @default(0)
-  downloadCount Int @default(0)
-  favoriteCount Int @default(0)
-  commentCount Int @default(0)
-  currentVersion Int @default(1)
+  id                 String             @id @default(cuid())
+  slug               String             @unique
+  title              String
+  abstract           String?
+  language           String             @default("fr")
+  type               DocumentType       @default(ARTICLE)
+  license            String             @default("Tous droits réservés")
+  promotion          String?
+  academicYear       String             @default("Non renseignée")
+  year               Int?
+  status             DocumentStatus     @default(DRAFT)
+  authorId           String
+  universityId       String?
+  facultyId          String?
+  departmentId       String?
+  categoryId         String
+  metadata           Json?
+  viewCount          Int                @default(0)
+  downloadCount      Int                @default(0)
+  favoriteCount      Int                @default(0)
+  commentCount       Int                @default(0)
+  currentVersion     Int                @default(1)
   thumbnailObjectKey String?
-  publishedAt DateTime?
-  deletedAt DateTime?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  author User @relation(fields: [authorId], references: [id])
-  university University? @relation(fields: [universityId], references: [id])
-  faculty Faculty? @relation(fields: [facultyId], references: [id])
-  department Department? @relation(fields: [departmentId], references: [id])
-  category Category @relation(fields: [categoryId], references: [id])
-  files DocumentFile[]
-  tags Tag[] @relation("DocumentTags")
-  reviews Review[]
-  publication Publication?
-  aiSummary AiSummary?
-  certificates Certificate[]
-  favorites DocumentFavorite[]
-  comments DocumentComment[]
-  history DocumentHistory[]
+  publishedAt        DateTime?
+  deletedAt          DateTime?
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+  author             User               @relation(fields: [authorId], references: [id])
+  university         University?        @relation(fields: [universityId], references: [id])
+  faculty            Faculty?           @relation(fields: [facultyId], references: [id])
+  department         Department?        @relation(fields: [departmentId], references: [id])
+  category           Category           @relation(fields: [categoryId], references: [id])
+  files              DocumentFile[]
+  tags               Tag[]              @relation("DocumentTags")
+  reviews            Review[]
+  publication        Publication?
+  aiSummary          AiSummary?
+  certificates       Certificate[]
+  favorites          DocumentFavorite[]
+  comments           DocumentComment[]
+  history            DocumentHistory[]
+
   @@index([status, createdAt])
   @@index([categoryId, year])
   @@index([authorId, status, updatedAt])
   @@index([universityId, facultyId, departmentId])
 }
+
 model DocumentFile {
-  id String @id @default(cuid())
+  id         String   @id @default(cuid())
   documentId String
-  objectKey String @unique
-  fileName String
-  mimeType String
-  sizeBytes Int
-  checksum String
-  version Int @default(1)
-  isUploaded Boolean @default(true)
-  createdAt DateTime @default(now())
-  document Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  objectKey  String   @unique
+  fileName   String
+  mimeType   String
+  sizeBytes  Int
+  checksum   String
+  version    Int      @default(1)
+  isUploaded Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  document   Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
 }
 
 model DocumentFavorite {
-  userId String
+  userId     String
   documentId String
-  createdAt DateTime @default(now())
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-  document Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  document   Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
 
   @@id([userId, documentId])
   @@index([documentId])
 }
 
 model DocumentComment {
-  id String @id @default(cuid())
+  id         String    @id @default(cuid())
   documentId String
-  authorId String
-  body String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  deletedAt DateTime?
-  document Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
-  author User @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  authorId   String
+  body       String
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  deletedAt  DateTime?
+  document   Document  @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  author     User      @relation(fields: [authorId], references: [id], onDelete: Cascade)
 
   @@index([documentId, createdAt])
 }
 
 model DocumentHistory {
-  id String @id @default(cuid())
+  id         String          @id @default(cuid())
   documentId String
-  actorId String?
-  action String
+  actorId    String?
+  action     String
   fromStatus DocumentStatus?
-  toStatus DocumentStatus?
-  version Int
-  comment String?
-  metadata Json?
-  createdAt DateTime @default(now())
-  document Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
-  actor User? @relation(fields: [actorId], references: [id], onDelete: SetNull)
+  toStatus   DocumentStatus?
+  version    Int
+  comment    String?
+  metadata   Json?
+  createdAt  DateTime        @default(now())
+  document   Document        @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  actor      User?           @relation(fields: [actorId], references: [id], onDelete: SetNull)
 
   @@index([documentId, createdAt])
 }
+
 model Category {
-  id String @id @default(cuid())
-  name String
-  slug String @unique
+  id        String     @id @default(cuid())
+  name      String
+  slug      String     @unique
   documents Document[]
 }
+
 model Tag {
-  id String @id @default(cuid())
-  name String
-  slug String @unique
+  id        String     @id @default(cuid())
+  name      String
+  slug      String     @unique
   documents Document[] @relation("DocumentTags")
 }
+
 model Publication {
-  id String @id @default(cuid())
-  documentId String @unique
+  id          String   @id @default(cuid())
+  documentId  String   @unique
   publisherId String
-  internalDoi String? @unique
+  internalDoi String?  @unique
   publishedAt DateTime @default(now())
-  document Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
-  publisher User @relation(fields: [publisherId], references: [id])
+  document    Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  publisher   User     @relation(fields: [publisherId], references: [id])
 }
+
 model Review {
-  id String @id @default(cuid())
+  id         String         @id @default(cuid())
   documentId String
   reviewerId String
-  decision DocumentStatus
-  comment String?
-  createdAt DateTime @default(now())
-  document Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
-  reviewer User @relation(fields: [reviewerId], references: [id])
+  decision   DocumentStatus
+  comment    String?
+  createdAt  DateTime       @default(now())
+  document   Document       @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  reviewer   User           @relation(fields: [reviewerId], references: [id])
 }
+
 model Certificate {
-  id String @id @default(cuid())
+  id         String   @id @default(cuid())
   documentId String
-  code String @unique
-  type String
-  issuedAt DateTime @default(now())
-  document Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  code       String   @unique
+  type       String
+  issuedAt   DateTime @default(now())
+  document   Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
 }
+
 model AiSummary {
-  id String @id @default(cuid())
-  documentId String @unique
-  summary String
-  keywords String[]
-  model String
-  version Int @default(1)
-  createdAt DateTime @default(now())
-  document Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  id         String   @id @default(cuid())
+  documentId String   @unique
+  summary    String
+  keywords   String[]
+  model      String
+  version    Int      @default(1)
+  createdAt  DateTime @default(now())
+  document   Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
 }
+
 model SearchLog {
-  id String @id @default(cuid())
-  userId String?
-  query String
-  filters Json?
+  id          String   @id @default(cuid())
+  userId      String?
+  query       String
+  filters     Json?
   resultCount Int
-  createdAt DateTime @default(now())
-  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+  createdAt   DateTime @default(now())
+  user        User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+
   @@index([createdAt])
 }
 
 model SearchIndexJob {
-  id          String   @id @default(cuid())
+  id          String    @id @default(cuid())
   entityType  String
   entityId    String
   action      String
-  attempts    Int      @default(0)
-  availableAt DateTime @default(now())
+  attempts    Int       @default(0)
+  availableAt DateTime  @default(now())
   lockedAt    DateTime?
   processedAt DateTime?
   error       String?
-  createdAt   DateTime @default(now())
+  createdAt   DateTime  @default(now())
 
   @@index([processedAt, availableAt, createdAt])
   @@index([entityType, entityId])
 }
+
 model AuditLog {
-  id String @id @default(cuid())
-  actorId String?
-  action String
+  id         String   @id @default(cuid())
+  actorId    String?
+  action     String
   entityType String
-  entityId String?
-  ipHash String?
-  payload Json?
-  createdAt DateTime @default(now())
-  actor User? @relation("AuditActor", fields: [actorId], references: [id], onDelete: SetNull)
+  entityId   String?
+  ipHash     String?
+  userAgent  String?
+  oldValue   Json?
+  newValue   Json?
+  payload    Json?
+  createdAt  DateTime @default(now())
+  actor      User?    @relation("AuditActor", fields: [actorId], references: [id], onDelete: SetNull)
+
   @@index([entityType, entityId])
   @@index([createdAt])
 }

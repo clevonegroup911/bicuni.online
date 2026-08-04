@@ -8,6 +8,7 @@ import "./auth.css";
 import "./public.css";
 import "./accessibility.css";
 import "./search.css";
+import "./admin.css";
 import { Footer } from "@/components/layout/footer";
 import { Header } from "@/components/layout/header";
 import { ToastProvider } from "@/components/ui/toast";

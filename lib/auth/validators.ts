@@ -16,7 +16,6 @@ export const registerSchema = z.object({
   name: z.string().trim().min(2).max(100),
   email: z.string().trim().email().max(254).transform((value) => value.toLowerCase()),
   password,
-  role: z.enum(["STUDENT", "RESEARCHER"]).default("STUDENT"),
 });
 
 export const forgotPasswordSchema = z.object({

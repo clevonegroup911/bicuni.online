@@ -1,17 +1,21 @@
 import { describe, expect, it } from "vitest";
-import { can, ROLES } from "./rbac";
+import { can, isAdministrativeRole, isSuperAdmin, ROLES } from "./rbac";
 
 describe("RBAC", () => {
-  it("couvre exactement les cinq rôles", () => {
-    expect(ROLES).toEqual(["STUDENT", "RESEARCHER", "UNIVERSITY_ADMIN", "SUPER_ADMIN", "GOVERNMENT"]);
+  it("couvre les rôles Back Office et conserve les rôles académiques", () => {
+    expect(ROLES).toEqual(["USER", "ADMIN", "MODERATOR", "INSTITUTION_ADMIN", "STUDENT", "RESEARCHER", "UNIVERSITY_ADMIN", "SUPER_ADMIN", "GOVERNMENT"]);
   });
-
-  it("applique les permissions propres à chaque rôle", () => {
-    expect(can("STUDENT", "document:create")).toBe(false);
-    expect(can("RESEARCHER", "document:create")).toBe(true);
-    expect(can("UNIVERSITY_ADMIN", "document:review")).toBe(true);
-    expect(can("SUPER_ADMIN", "anything")).toBe(true);
-    expect(can("GOVERNMENT", "analytics:national")).toBe(true);
-    expect(can("GOVERNMENT", "document:review")).toBe(false);
+  it("limite les permissions administratives", () => {
+    expect(can("USER", "admin:access")).toBe(false);
+    expect(can("MODERATOR", "admin:documents:review")).toBe(true);
+    expect(can("MODERATOR", "admin:users:manage")).toBe(false);
+    expect(can("ADMIN", "admin:users:read")).toBe(true);
+    expect(can("ADMIN", "admin:users:manage")).toBe(false);
+    expect(can("SUPER_ADMIN", "admin:users:manage")).toBe(true);
+  });
+  it("identifie les rôles administratifs et le propriétaire", () => {
+    expect(isAdministrativeRole("INSTITUTION_ADMIN")).toBe(true);
+    expect(isAdministrativeRole("USER")).toBe(false);
+    expect(isSuperAdmin("SUPER_ADMIN")).toBe(true);
   });
 });

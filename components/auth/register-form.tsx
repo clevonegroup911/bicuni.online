@@ -34,7 +34,6 @@ export function RegisterForm() {
         {error && <p role="alert" className="form-error">{error}</p>}
         <label>Nom complet<input name="name" className="input" autoComplete="name" required minLength={2}/></label>
         <label>Adresse e-mail<input name="email" className="input" type="email" autoComplete="email" required/></label>
-        <label>Profil<select name="role" className="input" defaultValue="STUDENT"><option value="STUDENT">Étudiant</option><option value="RESEARCHER">Chercheur</option></select></label>
         <label>Mot de passe<input name="password" className="input" type="password" autoComplete="new-password" required minLength={12}/><small>12 caractères, avec majuscule, minuscule et chiffre.</small></label>
         <button className="button" disabled={pending}>{pending ? "Création…" : "Créer mon compte"}</button>
       </form>}

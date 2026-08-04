@@ -9,7 +9,7 @@ export class ReviewService {
     const document = await db.document.findUnique({ where: { id } });
     if (!document) throw new DocumentDomainError("Document introuvable.", 404);
     if (document.status !== "PENDING_REVIEW") throw new DocumentDomainError("Seul un document en attente peut être validé.");
-    if (actor.role === "UNIVERSITY_ADMIN") {
+    if (actor.role === "UNIVERSITY_ADMIN" || actor.role === "INSTITUTION_ADMIN") {
       if (!document.universityId) throw new DocumentDomainError("Un dépôt sans université doit être validé par un super administrateur.", 403);
       const mandate = await db.university.count({ where: { id: document.universityId, admins: { some: { id: actor.id } } } });
       if (!mandate) throw new DocumentDomainError("Ce document ne relève pas de votre université.", 403);
