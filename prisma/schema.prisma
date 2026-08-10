@@ -59,6 +59,21 @@ enum PaymentProvider {
   ORANGE_MONEY
 }
 
+enum InstitutionType {
+  UNIVERSITY
+  HIGHER_INSTITUTE
+  RESEARCH_CENTER
+  SCHOOL
+  OTHER
+}
+
+enum InstitutionStatus {
+  PENDING
+  ACTIVE
+  SUSPENDED
+  ARCHIVED
+}
+
 model User {
   id                  String               @id @default(cuid())
   email               String               @unique
@@ -235,16 +250,28 @@ model WebhookEvent {
 }
 
 model University {
-  id        String     @id @default(cuid())
+  id        String            @id @default(cuid())
   name      String
-  slug      String     @unique
+  acronym   String?
+  slug      String            @unique
+  type      InstitutionType   @default(UNIVERSITY)
   country   String
+  province  String?
+  city      String?
+  address   String?
+  website   String?
   domain    String?
   logoUrl   String?
+  status    InstitutionStatus @default(ACTIVE)
+  createdAt DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
   faculties Faculty[]
   profiles  Profile[]
   documents Document[]
-  admins    User[]     @relation("UniversityAdmins")
+  admins    User[]            @relation("UniversityAdmins")
+
+  @@index([status, type, country])
+  @@index([createdAt])
 }
 
 model Faculty {

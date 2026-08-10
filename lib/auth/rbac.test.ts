@@ -12,6 +12,11 @@ describe("RBAC", () => {
     expect(can("ADMIN", "admin:users:read")).toBe(true);
     expect(can("ADMIN", "admin:users:manage")).toBe(false);
     expect(can("SUPER_ADMIN", "admin:users:manage")).toBe(true);
+    expect(can("ADMIN", "admin:institutions:read")).toBe(true);
+    expect(can("ADMIN", "admin:institutions:manage")).toBe(true);
+    expect(can("INSTITUTION_ADMIN", "admin:institutions:manage")).toBe(true);
+    expect(can("MODERATOR", "admin:institutions:manage")).toBe(false);
+    expect(can("USER", "admin:institutions:read")).toBe(false);
   });
   it("identifie les rôles administratifs et le propriétaire", () => {
     expect(isAdministrativeRole("INSTITUTION_ADMIN")).toBe(true);
