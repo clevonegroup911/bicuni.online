@@ -36,7 +36,9 @@
 .admin-table td:first-child{display:grid}
 .admin-table td small{color:var(--muted)}
 .admin-status{padding:5px 8px;border-radius:99px;background:rgba(67,95,255,.12);font-size:10px;font-weight:900}
-.admin-status.suspended,.admin-status.deleted{color:#ff7c86;background:rgba(220,38,38,.12)}
+.admin-status.suspended,.admin-status.deleted,.admin-status.archived{color:#ff7c86;background:rgba(220,38,38,.12)}
+.admin-status.pending{color:#fbbf24;background:rgba(245,158,11,.12)}
+.admin-status.active,.admin-status.published,.admin-status.approved{color:#86efac;background:rgba(16,185,129,.12)}
 .admin-user-actions{display:flex;align-items:center;gap:7px;min-width:310px}
 .admin-user-actions .input{min-width:150px}
 .create-admin{padding:18px;margin-bottom:15px}
@@ -48,6 +50,14 @@
 .admin-login .eyebrow{margin-top:30px}
 .admin-login h1{font-size:38px}
 .admin-login p{color:var(--muted)}
+.admin-title-row{display:flex;justify-content:space-between;gap:16px;align-items:flex-start;flex-wrap:wrap}
+.admin-filters-institutions{grid-template-columns:2fr 1fr 1fr 1fr auto}
+.admin-institution-form{padding:22px;margin-top:8px}
+.admin-form-actions{display:flex;align-items:center;gap:12px}
+.admin-institution-actions,.admin-institution-header-actions,.admin-institution-row-actions{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.admin-pagination{display:flex;align-items:center;gap:12px;margin-top:16px}
+.admin-table a{color:inherit;text-decoration:none}
+.admin-table a:hover strong{color:#93a8ff}
 @media(max-width:1050px){
   .admin-workspace{grid-template-columns:82px minmax(0,1fr)}
   .admin-navigation{padding-inline:12px}
@@ -65,5 +75,5 @@
   .admin-page{padding:20px}
   .admin-stats,.admin-dashboard-grid{grid-template-columns:1fr}
   .admin-panel-wide{grid-column:auto}
-  .admin-filters{grid-template-columns:1fr}
+  .admin-filters,.admin-filters-institutions{grid-template-columns:1fr}
 }
