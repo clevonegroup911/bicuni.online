@@ -9,6 +9,8 @@ export type Permission =
   | "admin:institutions:read"
   | "admin:institutions:manage"
   | "admin:documents:review"
+  | "admin:pids:read"
+  | "admin:pids:manage"
   | "admin:audit:read"
   | "document:read"
   | "document:create"
@@ -19,12 +21,12 @@ export type Permission =
 
 const grants: Record<Role, readonly (Permission | "*")[]> = {
   USER: ["document:read", "document:create", "profile:write"],
-  ADMIN: ["admin:access", "admin:users:read", "admin:institutions:read", "admin:institutions:manage", "admin:documents:review", "admin:audit:read", "document:read"],
-  MODERATOR: ["admin:access", "admin:documents:review", "document:read"],
-  INSTITUTION_ADMIN: ["admin:access", "admin:users:read", "admin:institutions:read", "admin:institutions:manage", "admin:documents:review", "document:read", "document:create", "university:manage"],
+  ADMIN: ["admin:access", "admin:users:read", "admin:institutions:read", "admin:institutions:manage", "admin:documents:review", "admin:pids:read", "admin:pids:manage", "admin:audit:read", "document:read"],
+  MODERATOR: ["admin:access", "admin:documents:review", "admin:pids:read", "document:read"],
+  INSTITUTION_ADMIN: ["admin:access", "admin:users:read", "admin:institutions:read", "admin:institutions:manage", "admin:documents:review", "admin:pids:read", "document:read", "document:create", "university:manage"],
   STUDENT: ["document:read", "document:create", "profile:write"],
   RESEARCHER: ["document:read", "document:create", "profile:write", "analytics:own"],
-  UNIVERSITY_ADMIN: ["admin:access", "admin:users:read", "admin:institutions:read", "admin:institutions:manage", "admin:documents:review", "document:read", "document:create", "university:manage"],
+  UNIVERSITY_ADMIN: ["admin:access", "admin:users:read", "admin:institutions:read", "admin:institutions:manage", "admin:documents:review", "admin:pids:read", "document:read", "document:create", "university:manage"],
   SUPER_ADMIN: ["*"],
   GOVERNMENT: ["document:read", "analytics:national"],
 };

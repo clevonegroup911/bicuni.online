@@ -102,6 +102,8 @@ model User {
   favorites           DocumentFavorite[]
   comments            DocumentComment[]
   documentEvents      DocumentHistory[]
+  persistentIdentifiers PersistentIdentifier[] @relation("PidCreator")
+  pidTargetChanges      PersistentIdentifierTargetHistory[] @relation("PidChanger")
 
   @@index([role, status, createdAt])
 }
@@ -500,4 +502,56 @@ model AuditLog {
 
   @@index([entityType, entityId])
   @@index([createdAt])
+}
+
+enum PersistentIdentifierScheme {
+  BICUNI_PID
+}
+
+enum PersistentIdentifierStatus {
+  ACTIVE
+  DEPRECATED
+  TOMBSTONE
+}
+
+enum PidResourceType {
+  DOCUMENT
+  PUBLICATION
+}
+
+model PersistentIdentifier {
+  id           String                      @id @default(cuid())
+  scheme       PersistentIdentifierScheme  @default(BICUNI_PID)
+  prefix       String
+  suffix       String
+  identifier   String                      @unique
+  resourceType PidResourceType
+  resourceId   String
+  targetUrl    String
+  status       PersistentIdentifierStatus  @default(ACTIVE)
+  metadata     Json?
+  createdById  String?
+  createdAt    DateTime                    @default(now())
+  updatedAt    DateTime                    @updatedAt
+  createdBy    User?                       @relation("PidCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  history      PersistentIdentifierTargetHistory[]
+
+  @@unique([prefix, suffix])
+  @@unique([resourceType, resourceId])
+  @@index([status, createdAt])
+  @@index([resourceId])
+}
+
+model PersistentIdentifierTargetHistory {
+  id                     String               @id @default(cuid())
+  persistentIdentifierId String
+  previousTargetUrl      String
+  newTargetUrl           String
+  changedById            String?
+  changedAt              DateTime             @default(now())
+  reason                 String?
+  persistentIdentifier   PersistentIdentifier @relation(fields: [persistentIdentifierId], references: [id], onDelete: Restrict)
+  changedBy              User?                @relation("PidChanger", fields: [changedById], references: [id], onDelete: SetNull)
+
+  @@index([persistentIdentifierId, changedAt])
 }

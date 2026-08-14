@@ -1,18 +1,30 @@
 import type { Prisma } from "@prisma/client";
-import { db } from "@/lib/db/client";
+import { db } from "../db/client";
 import type { DocumentActor } from "@/lib/documents/permissions";
 import { canCreateDocument, canDeleteDocument, canEditDocument, canSubmitDocument } from "@/lib/documents/permissions";
+import { registeredDoi } from "@/lib/documents/doi";
 import type { documentMetadataSchema } from "@/lib/validators/document";
 import type { z } from "zod";
-import { logger } from "@/lib/observability/logger";
+import { logger } from "../observability/logger";
 
 export class DocumentDomainError extends Error {
   constructor(message: string, readonly status = 400) { super(message); }
 }
 
+export const documentFilePublicSelect = {
+  id: true,
+  fileName: true,
+  mimeType: true,
+  sizeBytes: true,
+  checksum: true,
+  version: true,
+  isUploaded: true,
+  createdAt: true,
+} satisfies Prisma.DocumentFileSelect;
+
 export const documentInclude = {
   author: { select: { id: true, name: true } }, university: true, faculty: true, department: true,
-  category: true, tags: true, files: { orderBy: { version: "desc" as const } }, publication: true,
+  category: true, tags: true, files: { select: documentFilePublicSelect, orderBy: { version: "desc" as const } }, publication: true,
   _count: { select: { favorites: true, comments: true } },
 } satisfies Prisma.DocumentInclude;
 
@@ -26,7 +38,7 @@ export class DocumentService {
       db.document.findMany({ where, include: documentInclude, orderBy: { publishedAt: "desc" }, skip: (input.page - 1) * input.pageSize, take: input.pageSize }),
       db.document.count({ where }),
     ]);
-    return { items, total, page: input.page, pageSize: input.pageSize };
+    return { items: items.map(sanitizeDocumentForClient), total, page: input.page, pageSize: input.pageSize };
   }
 
   async update(id: string, actor: DocumentActor, data: z.infer<typeof documentMetadataSchema> | Partial<z.infer<typeof documentMetadataSchema>>) {
@@ -64,3 +76,28 @@ export function assertCanCreate(actor: DocumentActor) {
   if (!canCreateDocument(actor)) throw new DocumentDomainError("Création refusée.", 403);
 }
 export function slugify(value: string) { return value.toLowerCase().normalize("NFKD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "").slice(0, 80); }
+
+export function sanitizeDocumentForClient<T extends {
+  files?: Array<Record<string, unknown>>;
+  publication?: { internalDoi: string | null } | null;
+}>(document: T): T {
+  const publicFields = Object.fromEntries(
+    Object.entries(document).filter(([key]) => key !== "thumbnailObjectKey" && key !== "files" && key !== "publication"),
+  );
+  return {
+    ...publicFields,
+    files: document.files?.map((file) => ({
+      id: file.id,
+      fileName: file.fileName,
+      mimeType: file.mimeType,
+      sizeBytes: file.sizeBytes,
+      checksum: file.checksum,
+      version: file.version,
+      isUploaded: file.isUploaded,
+      createdAt: file.createdAt,
+    })),
+    publication: document.publication
+      ? { ...document.publication, internalDoi: registeredDoi(document.publication.internalDoi) }
+      : document.publication,
+  } as T;
+}

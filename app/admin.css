@@ -18,6 +18,7 @@
 .admin-title h1{margin:8px 0;font-size:clamp(30px,4vw,48px)}
 .admin-title p{color:var(--muted)}
 .admin-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+.admin-stats-documents{grid-template-columns:repeat(5,minmax(0,1fr));margin-bottom:18px}
 .admin-stats article{display:grid;gap:8px;padding:19px}
 .admin-stats svg{color:#6686ff}
 .admin-stats strong{font-size:27px}
@@ -52,6 +53,12 @@
 .admin-login p{color:var(--muted)}
 .admin-title-row{display:flex;justify-content:space-between;gap:16px;align-items:flex-start;flex-wrap:wrap}
 .admin-filters-institutions{grid-template-columns:2fr 1fr 1fr 1fr auto}
+.admin-filters-documents{grid-template-columns:2fr 1fr 1fr 1.4fr 1fr auto;margin-top:18px}
+.admin-checksum{font-size:10px;word-break:break-all}
+.admin-reject-field{display:grid;gap:6px;min-width:min(100%,280px)}
+.admin-reject-field span{font-size:11px;color:var(--muted);font-weight:700}
+.admin-status.pending_review,.admin-status.draft,.admin-status.deprecated{color:#fbbf24;background:rgba(245,158,11,.12)}
+.admin-status.rejected,.admin-status.tombstone{color:#ff7c86;background:rgba(220,38,38,.12)}
 .admin-institution-form{padding:22px;margin-top:8px}
 .admin-form-actions{display:flex;align-items:center;gap:12px}
 .admin-institution-actions,.admin-institution-header-actions,.admin-institution-row-actions{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
@@ -63,7 +70,7 @@
   .admin-navigation{padding-inline:12px}
   .admin-navigation .logo-wordmark,.admin-navigation nav span,.admin-brand span{display:none}
   .admin-navigation nav a{justify-content:center}
-  .admin-stats{grid-template-columns:1fr 1fr}
+  .admin-stats,.admin-stats-documents{grid-template-columns:1fr 1fr}
 }
 @media(max-width:720px){
   .admin-workspace{display:block;min-height:auto}
@@ -75,5 +82,5 @@
   .admin-page{padding:20px}
   .admin-stats,.admin-dashboard-grid{grid-template-columns:1fr}
   .admin-panel-wide{grid-column:auto}
-  .admin-filters,.admin-filters-institutions{grid-template-columns:1fr}
+  .admin-filters,.admin-filters-institutions,.admin-filters-documents{grid-template-columns:1fr}
 }

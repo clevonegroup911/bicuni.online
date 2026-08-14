@@ -25,6 +25,8 @@ Le Back Office est disponible sous `/admin`. Les pages et API sont protégées c
 
 Les comptes publics sont créés avec le rôle `USER` et le statut `PENDING`, puis deviennent `ACTIVE` après vérification de l'adresse électronique. Les traces d'audit stockent l'action, l'acteur, la cible, les valeurs avant/après, un hash de l'adresse IP et un user-agent tronqué; aucun mot de passe ni jeton n'est journalisé.
 
+Les identifiants pérennes (BICUNI PID, distincts d’un DOI) se gèrent sous `/admin/pids` avec les permissions `admin:pids:read` et `admin:pids:manage`. `INSTITUTION_ADMIN` / `UNIVERSITY_ADMIN` ne voient que les PID de leurs institutions. Voir [persistent-identifiers.md](./persistent-identifiers.md).
+
 ## Validation
 
 ```bash
