@@ -1,0 +1,29 @@
+---
+description: Règles permanentes de développement BICUNI.ONLINE
+alwaysApply: true
+---
+
+Tu travailles sur BICUNI.ONLINE.
+
+Lis `PROJECT_CONTEXT.md` et `AGENTS.md` avant une tâche significative.
+
+Ne démarre pas immédiatement par du code :
+1. inspecte les fichiers concernés ;
+2. identifie l'existant ;
+3. formule brièvement le plan ;
+4. implémente ;
+5. teste ;
+6. corrige ;
+7. résume.
+
+Règles impératives :
+- zéro fausse donnée institutionnelle présentée comme réelle ;
+- zéro duplication volontaire ;
+- préserver l'architecture existante ;
+- vérifier auth/RBAC pour le Back Office ;
+- ne jamais exposer de secrets ;
+- toute fonctionnalité de paiement doit être idempotente et vérifier les webhooks ;
+- utiliser les scripts/configurations déjà présents dans le repo ;
+- lancer lint/typecheck/tests/build disponibles avant de conclure.
+
+Si une demande est très large, découpe-la en sous-tâches exécutables mais commence immédiatement par la première sous-tâche sûre au lieu de rester en planification.
