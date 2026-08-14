@@ -7,6 +7,7 @@ import { privateStorage, safeObjectKey } from "@/lib/storage";
 import { documentUploadSchema } from "@/lib/validators/document";
 import { assertCanCreate, slugify } from "@/lib/documents/document-service";
 import { logger } from "@/lib/observability/logger";
+import { deleteUnboundDocument } from "@/lib/pid/resource-binding";
 
 export async function POST(request: Request) {
   const session = await auth();
@@ -70,7 +71,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ documentId: document.id, fileId: document.files[0].id, uploadUrl }, { status: 201 });
   } catch (error) {
     logger.error("gcs.upload_initialization_error", error, { documentId: document.id, userId: session.user.id });
-    await db.document.delete({ where: { id: document.id } });
+    await deleteUnboundDocument(document.id);
     throw error;
   }
 }

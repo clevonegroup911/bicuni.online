@@ -1,4 +1,4 @@
-import { Activity, BarChart3, Bell, Building2, CreditCard, DatabaseBackup, FileCheck2, FileText, LayoutDashboard, MonitorCog, Settings, ShieldCheck, Users, WalletCards } from "lucide-react";
+import { Activity, BarChart3, Bell, Building2, CreditCard, DatabaseBackup, FileCheck2, FileText, Fingerprint, LayoutDashboard, MonitorCog, Settings, ShieldCheck, Users, WalletCards } from "lucide-react";
 import type { ReactNode } from "react";
 import Link from "next/link";
 import type { Role } from "@prisma/client";
@@ -7,7 +7,7 @@ import { Logo } from "@/components/logo";
 
 const navigation = [
   ["Tableau de bord", "/admin/dashboard", LayoutDashboard], ["Utilisateurs", "/admin/users", Users], ["Institutions", "/admin/institutions", Building2],
-  ["Documents", "/admin/documents", FileText], ["Validation", "/admin/validation", FileCheck2], ["Abonnements", "/admin/subscriptions", CreditCard],
+  ["Documents", "/admin/documents", FileText], ["Identifiants PID", "/admin/pids", Fingerprint], ["Validation", "/admin/validation", FileCheck2], ["Abonnements", "/admin/subscriptions", CreditCard],
   ["Paiements", "/admin/payments", WalletCards], ["Analytique", "/admin/analytics", BarChart3], ["Notifications", "/admin/notifications", Bell],
   ["Journaux d’audit", "/admin/audit", Activity], ["Sauvegardes", "/admin/backups", DatabaseBackup], ["Monitoring", "/admin/monitoring", MonitorCog],
   ["Paramètres", "/admin/settings", Settings],

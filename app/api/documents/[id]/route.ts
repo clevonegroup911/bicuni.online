@@ -1,20 +1,20 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { db } from "@/lib/db/client";
-import { DocumentDomainError, DocumentService, documentInclude } from "@/lib/documents/document-service";
-import { canReadDocument } from "@/lib/documents/permissions";
+import { DocumentDomainError, DocumentService, documentInclude, sanitizeDocumentForClient } from "@/lib/documents/document-service";
+import { canReadDocumentSecure } from "@/lib/documents/scope";
 import { documentUpdateSchema } from "@/lib/validators/document";
 
 export async function GET(_: Request, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth(); const id = (await params).id;
   const document = await db.document.findUnique({ where: { id }, include: { ...documentInclude, history: { orderBy: { createdAt: "desc" } }, reviews: { include: { reviewer: { select: { name: true } } } } } });
-  if (!document || !canReadDocument(session?.user ?? null, document)) return NextResponse.json({ error: "Document introuvable." }, { status: 404 });
-  return NextResponse.json(document);
+  if (!document || !(await canReadDocumentSecure(session?.user ?? null, document))) return NextResponse.json({ error: "Document introuvable." }, { status: 404 });
+  return NextResponse.json(sanitizeDocumentForClient(document));
 }
 export async function PUT(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth(); if (!session?.user) return NextResponse.json({ error: "Non authentifié." }, { status: 401 });
   const parsed = documentUpdateSchema.safeParse(await request.json().catch(() => null)); if (!parsed.success) return NextResponse.json({ error: "Données invalides.", fields: parsed.error.flatten().fieldErrors }, { status: 400 });
-  try { return NextResponse.json(await new DocumentService().update((await params).id, session.user, parsed.data)); } catch (error) { return domainError(error); }
+  try { return NextResponse.json(sanitizeDocumentForClient(await new DocumentService().update((await params).id, session.user, parsed.data))); } catch (error) { return domainError(error); }
 }
 export async function DELETE(_: Request, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth(); if (!session?.user) return NextResponse.json({ error: "Non authentifié." }, { status: 401 });
