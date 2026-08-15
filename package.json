@@ -19,7 +19,9 @@
     "search:reindex": "tsx scripts/reindex-search.ts",
     "search:worker": "tsx scripts/search-worker.ts",
     "db:migrate:status": "prisma migrate status",
-    "db:migrate:deploy": "prisma migrate deploy"
+    "db:migrate:deploy": "prisma migrate deploy",
+    "db:baseline": "bash scripts/baseline-existing-db.sh",
+    "db:baseline:execute": "bash scripts/baseline-existing-db.sh --execute"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.7.4",

@@ -9,6 +9,7 @@ export type CheckoutInput = {
   interval: string;
   successUrl: string;
   cancelUrl: string;
+  idempotencyKey: string;
 };
 
 export interface PaymentGateway {
