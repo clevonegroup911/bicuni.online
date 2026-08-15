@@ -1,4 +1,38 @@
-import{ArrowUpRight,Building2,UserRound}from"lucide-react";import Link from"next/link";
-export function UniversityCard({name,count}:{name:string;count:number}){return <article className="glass card entity-card card-hover"><div className="entity-icon"><Building2/></div><div><h3>{name}</h3><p>{count} publication{count>1?"s":""} dans les résultats récents</p></div><ArrowUpRight size={17}/></article>}
-export function AuthorCard({name,count}:{name:string;count:number}){return <article className="glass card entity-card"><div className="entity-icon red"><UserRound/></div><div><h3>{name}</h3><p>{count} publication{count>1?"s":""} visible{count>1?"s":""}</p></div></article>}
-export function EntityEmpty(){return <div className="glass card empty-state"><Building2 size={28}/><h3>Le réseau se construit</h3><p>Les institutions apparaîtront ici dès la validation de leurs premières publications.</p><Link className="button secondary" href="mailto:institutions@bicuni.online">Rejoindre BICUNI</Link></div>}
+import { ArrowUpRight, Building2, UserRound } from "lucide-react";
+import Link from "next/link";
+
+export function UniversityCard({ name, count }: { name: string; count: number }) {
+  return (
+    <Link href={`/search?university=${encodeURIComponent(name)}`} className="glass card entity-card card-hover">
+      <div className="entity-icon"><Building2 /></div>
+      <div>
+        <h3>{name}</h3>
+        <p>{count} publication{count > 1 ? "s" : ""} dans les résultats récents</p>
+      </div>
+      <ArrowUpRight size={17} />
+    </Link>
+  );
+}
+
+export function AuthorCard({ name, count }: { name: string; count: number }) {
+  return (
+    <Link href={`/search?author=${encodeURIComponent(name)}`} className="glass card entity-card">
+      <div className="entity-icon red"><UserRound /></div>
+      <div>
+        <h3>{name}</h3>
+        <p>{count} publication{count > 1 ? "s" : ""} visible{count > 1 ? "s" : ""}</p>
+      </div>
+    </Link>
+  );
+}
+
+export function EntityEmpty() {
+  return (
+    <div className="glass card empty-state">
+      <Building2 size={28} />
+      <h3>Le réseau se construit</h3>
+      <p>Les institutions apparaîtront ici dès la validation de leurs premières publications.</p>
+      <a className="button secondary" href="mailto:institutions@bicuni.online">Rejoindre BICUNI</a>
+    </div>
+  );
+}

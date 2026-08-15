@@ -6,7 +6,7 @@ import { hashToken } from "@/lib/auth/tokens";
 import { resetPasswordSchema } from "@/lib/auth/validators";
 
 export async function POST(request: Request) {
-  if (!consumeAuthAttempt(`reset:${requestIdentity(request)}`, 8)) {
+  if (!await consumeAuthAttempt(`reset:${requestIdentity(request)}`, 8)) {
     return NextResponse.json({ error: "Trop de tentatives." }, { status: 429 });
   }
   const parsed = resetPasswordSchema.safeParse(await request.json().catch(() => null));

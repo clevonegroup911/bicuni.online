@@ -1,6 +1,26 @@
 import Stripe from "stripe";
 import type { CheckoutInput, PaymentGateway } from "@/lib/payments/types";
 
+const STRIPE_INTERVALS = ["day", "week", "month", "year"] as const;
+
+export function stripeRecurringPrice(input: Pick<CheckoutInput, "priceCents" | "currency" | "interval">) {
+  const currency = input.currency.trim().toLowerCase();
+  if (!Number.isSafeInteger(input.priceCents) || input.priceCents <= 0) {
+    throw new Error("Le montant du plan doit être un entier positif.");
+  }
+  if (!/^[a-z]{3}$/.test(currency)) {
+    throw new Error("La devise du plan doit être un code ISO à trois lettres.");
+  }
+  if (!STRIPE_INTERVALS.includes(input.interval as (typeof STRIPE_INTERVALS)[number])) {
+    throw new Error("L’intervalle du plan n’est pas pris en charge par Stripe.");
+  }
+  return {
+    currency,
+    unit_amount: input.priceCents,
+    recurring: { interval: input.interval as (typeof STRIPE_INTERVALS)[number] },
+  };
+}
+
 let stripeClient: Stripe | undefined;
 
 export function getStripe() {
@@ -12,6 +32,7 @@ export function getStripe() {
 
 export class StripeGateway implements PaymentGateway {
   async createSubscriptionCheckout(input: CheckoutInput) {
+    const price = stripeRecurringPrice(input);
     const session = await getStripe().checkout.sessions.create({
       mode: "subscription",
       customer_email: input.customerEmail,
@@ -21,9 +42,7 @@ export class StripeGateway implements PaymentGateway {
       line_items: [{
         quantity: 1,
         price_data: {
-          currency: "usd",
-          unit_amount: input.priceCents,
-          recurring: { interval: "month" },
+          ...price,
           product_data: { name: `BICUNI — ${input.planName}` },
         },
       }],

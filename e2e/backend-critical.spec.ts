@@ -12,10 +12,24 @@ const runId = randomUUID();
 const ids = { userIds: [] as string[], categoryIds: [] as string[], universityIds: [] as string[], documentIds: [] as string[] };
 
 test.afterAll(async () => {
-  await db.document.deleteMany({ where: { id: { in: ids.documentIds } } });
-  await db.university.deleteMany({ where: { id: { in: ids.universityIds } } });
-  await db.category.deleteMany({ where: { id: { in: ids.categoryIds } } });
-  await db.user.deleteMany({ where: { id: { in: ids.userIds } } });
+  const protectedResources = await db.persistentIdentifier.findMany({
+    where: { resourceType: "DOCUMENT", resourceId: { in: ids.documentIds } },
+    select: { resourceId: true },
+  });
+  const protectedDocumentIds = new Set(protectedResources.map((item) => item.resourceId));
+  const protectedDocuments = await db.document.findMany({
+    where: { id: { in: [...protectedDocumentIds] } },
+    select: { authorId: true, categoryId: true, universityId: true, publication: { select: { publisherId: true } } },
+  });
+  const protectedUserIds = new Set(protectedDocuments.flatMap((item) => [item.authorId, item.publication?.publisherId].filter((id): id is string => Boolean(id))));
+  const protectedCategoryIds = new Set(protectedDocuments.map((item) => item.categoryId));
+  const protectedUniversityIds = new Set(protectedDocuments.map((item) => item.universityId).filter((id): id is string => Boolean(id)));
+  await db.document.deleteMany({
+    where: { id: { in: ids.documentIds.filter((id) => !protectedDocumentIds.has(id)) } },
+  });
+  await db.university.deleteMany({ where: { id: { in: ids.universityIds.filter((id) => !protectedUniversityIds.has(id)) } } });
+  await db.category.deleteMany({ where: { id: { in: ids.categoryIds.filter((id) => !protectedCategoryIds.has(id)) } } });
+  await db.user.deleteMany({ where: { id: { in: ids.userIds.filter((id) => !protectedUserIds.has(id)) } } });
   for (const documentId of ids.documentIds) await new SearchIndexer().syncDocument(documentId);
   await Promise.all([db.$disconnect(), closeSearchCache()]);
 });
@@ -66,7 +80,7 @@ test("outbox, indexation, tolérance aux fautes, filtre et archivage", async ({ 
   ids.documentIds.push(document.id);
 
   const sync = await new SearchIndexer().processOutbox(100);
-  expect(sync.processed).toBeGreaterThan(0);
+  expect(sync.attempted).toBeGreaterThan(0);
   await expect.poll(async () => (await request.get(`/api/search?q=Agriculure&page=1&pageSize=20&language=fr&type=ARTICLE`)).json(), { timeout: 20_000 }).toMatchObject({ totalDocuments: 1 });
 
   await db.document.update({ where: { id: document.id }, data: { title: `Agroécologie Kivu ${runId}` } });

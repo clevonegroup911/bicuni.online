@@ -5,6 +5,8 @@ export type CheckoutInput = {
   planSlug: string;
   planName: string;
   priceCents: number;
+  currency: string;
+  interval: string;
   successUrl: string;
   cancelUrl: string;
 };

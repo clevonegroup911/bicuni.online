@@ -38,7 +38,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           const parsed = credentialsSchema.safeParse(rawCredentials);
           if (!parsed.success) return null;
           const emailHash = createHash("sha256").update(parsed.data.email).digest("hex");
-          if (!consumeAuthAttempt(`credentials:${requestIdentity(request)}:${emailHash}`, 8)) return null;
+          if (!await consumeAuthAttempt(`credentials:${requestIdentity(request)}:${emailHash}`, 8)) return null;
           const user = await db.user.findUnique({ where: { email: parsed.data.email } });
           if (!user?.passwordHash || !user.emailVerified || user.status !== "ACTIVE") {
             await db.auditLog.create({ data: { actorId: user?.id, action: "AUTH_SIGN_IN_FAILED", entityType: "User", entityId: user?.id, ...auditRequestContext(request) } });
@@ -70,9 +70,22 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       // and so JWTs issued before UserStatus existed remain valid after migration.
       const fresh = await db.user.findUnique({
         where: { id: token.id },
-        select: { role: true, status: true },
+        select: {
+          role: true,
+          status: true,
+          passwordResetTokens: {
+            where: { usedAt: { not: null } },
+            select: { usedAt: true },
+            orderBy: { usedAt: "desc" },
+            take: 1,
+          },
+        },
       });
       if (!fresh || fresh.status !== "ACTIVE") {
+        return {};
+      }
+      const passwordResetAt = fresh.passwordResetTokens[0]?.usedAt;
+      if (passwordResetAt && typeof token.iat === "number" && token.iat * 1000 < passwordResetAt.getTime()) {
         return {};
       }
       token.role = fresh.role;

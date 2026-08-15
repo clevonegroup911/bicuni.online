@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { Prisma, type PrismaClient } from "@prisma/client";
 import type Stripe from "stripe";
 import { db } from "@/lib/db/client";
 import { getStripe } from "@/lib/payments/stripe";
@@ -11,27 +12,29 @@ function subscriptionStatus(status: Stripe.Subscription.Status) {
   return "INCOMPLETE" as const;
 }
 
-async function processEvent(event: Stripe.Event) {
+type PaymentTransaction = Prisma.TransactionClient | PrismaClient;
+
+async function processEvent(event: Stripe.Event, transaction: PaymentTransaction = db) {
   if (event.type === "checkout.session.completed") {
     const checkout = event.data.object;
     const userId = checkout.metadata?.userId ?? checkout.client_reference_id;
     const planId = checkout.metadata?.planId;
     const providerRef = typeof checkout.subscription === "string" ? checkout.subscription : checkout.subscription?.id;
     if (!userId || !planId || !providerRef) throw new Error("Métadonnées Checkout incomplètes.");
-    await db.subscription.upsert({
+    await transaction.subscription.upsert({
       where: { providerRef },
       update: { status: "ACTIVE", startedAt: new Date() },
       create: { userId, planId, provider: "STRIPE", providerRef, status: "ACTIVE", startedAt: new Date() },
     });
     if (typeof checkout.customer === "string") {
-      await db.user.update({ where: { id: userId }, data: { stripeCustomerId: checkout.customer } });
+      await transaction.user.update({ where: { id: userId }, data: { stripeCustomerId: checkout.customer } });
     }
     return;
   }
 
   if (event.type === "customer.subscription.updated" || event.type === "customer.subscription.deleted") {
     const stripeSubscription = event.data.object;
-    await db.subscription.updateMany({
+    await transaction.subscription.updateMany({
       where: { providerRef: stripeSubscription.id },
       data: {
         status: event.type === "customer.subscription.deleted" ? "CANCELED" : subscriptionStatus(stripeSubscription.status),
@@ -46,11 +49,10 @@ async function processEvent(event: Stripe.Event) {
     const invoice = event.data.object;
     const providerSubscriptionId = typeof invoice.subscription === "string" ? invoice.subscription : invoice.subscription?.id;
     if (!providerSubscriptionId) return;
-    const subscription = await db.subscription.findUnique({ where: { providerRef: providerSubscriptionId } });
+    const subscription = await transaction.subscription.findUnique({ where: { providerRef: providerSubscriptionId } });
     if (!subscription) return;
     const paid = event.type === "invoice.paid";
-    await db.$transaction([
-      db.invoice.upsert({
+    await transaction.invoice.upsert({
         where: { providerRef: invoice.id },
         update: { status: invoice.status ?? (paid ? "paid" : "open"), amountPaidCents: invoice.amount_paid },
         create: {
@@ -67,8 +69,8 @@ async function processEvent(event: Stripe.Event) {
           periodStart: new Date(invoice.period_start * 1000),
           periodEnd: new Date(invoice.period_end * 1000),
         },
-      }),
-      db.payment.upsert({
+      });
+    await transaction.payment.upsert({
         where: { providerRef: invoice.id },
         update: { status: paid ? "SUCCEEDED" : "FAILED" },
         create: {
@@ -80,12 +82,11 @@ async function processEvent(event: Stripe.Event) {
           currency: invoice.currency.toUpperCase(),
           status: paid ? "SUCCEEDED" : "FAILED",
         },
-      }),
-      db.subscription.update({
+      });
+    await transaction.subscription.update({
         where: { id: subscription.id },
         data: { status: paid ? "ACTIVE" : "PAST_DUE", currentPeriodEnd: new Date(invoice.period_end * 1000) },
-      }),
-    ]);
+      });
   }
 }
 
@@ -103,18 +104,17 @@ export async function POST(request: Request) {
   }
 
   try {
-    await db.webhookEvent.create({
-      data: { provider: "STRIPE", providerEventId: event.id, eventType: event.type },
+    await db.$transaction(async (transaction) => {
+      await transaction.webhookEvent.create({
+        data: { provider: "STRIPE", providerEventId: event.id, eventType: event.type },
+      });
+      await processEvent(event, transaction);
     });
-  } catch {
-    return NextResponse.json({ received: true, duplicate: true });
-  }
-
-  try {
-    await processEvent(event);
   } catch (error) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+      return NextResponse.json({ received: true, duplicate: true });
+    }
     logger.error("stripe.webhook.processing_error", error, { eventId: event.id, eventType: event.type });
-    await db.webhookEvent.deleteMany({ where: { provider: "STRIPE", providerEventId: event.id } });
     throw error;
   }
   return NextResponse.json({ received: true });

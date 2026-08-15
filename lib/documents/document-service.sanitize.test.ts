@@ -1,10 +1,22 @@
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("../db/client", () => ({ db: {} }));
+const universityFindUnique = vi.hoisted(() => vi.fn());
+const facultyFindUnique = vi.hoisted(() => vi.fn());
+const departmentFindUnique = vi.hoisted(() => vi.fn());
 
-import { sanitizeDocumentForClient } from "./document-service";
+vi.mock("../db/client", () => ({
+  db: {
+    university: { findUnique: universityFindUnique },
+    faculty: { findUnique: facultyFindUnique },
+    department: { findUnique: departmentFindUnique },
+  },
+}));
+
+import { assertInstitutionHierarchy, sanitizeDocumentForClient } from "./document-service";
 
 describe("sanitizeDocumentForClient", () => {
+  beforeEach(() => vi.clearAllMocks());
+
   it("retire objectKey et le DOI synthétique", () => {
     const result = sanitizeDocumentForClient({
       id: "doc-1",
@@ -16,5 +28,25 @@ describe("sanitizeDocumentForClient", () => {
     expect(result.files?.[0]).not.toHaveProperty("objectKey");
     expect(result.files?.[0].fileName).toBe("memoire.pdf");
     expect(result.publication?.internalDoi).toBeNull();
+  });
+
+  it("refuse une faculté ou un département hors de la hiérarchie sélectionnée", async () => {
+    universityFindUnique.mockResolvedValue({ id: "uni-1", status: "ACTIVE" });
+    facultyFindUnique.mockResolvedValue({ universityId: "uni-2" });
+    await expect(assertInstitutionHierarchy({ universityId: "uni-1", facultyId: "fac-1" }))
+      .rejects.toThrow(/faculté ne correspond pas/);
+
+    facultyFindUnique.mockResolvedValue({ universityId: "uni-1" });
+    departmentFindUnique.mockResolvedValue({ facultyId: "fac-2" });
+    await expect(assertInstitutionHierarchy({ universityId: "uni-1", facultyId: "fac-1", departmentId: "dep-1" }))
+      .rejects.toThrow(/département ne correspond pas/);
+  });
+
+  it("accepte une hiérarchie institutionnelle active et cohérente", async () => {
+    universityFindUnique.mockResolvedValue({ id: "uni-1", status: "ACTIVE" });
+    facultyFindUnique.mockResolvedValue({ universityId: "uni-1" });
+    departmentFindUnique.mockResolvedValue({ facultyId: "fac-1" });
+    await expect(assertInstitutionHierarchy({ universityId: "uni-1", facultyId: "fac-1", departmentId: "dep-1" }))
+      .resolves.toBeUndefined();
   });
 });

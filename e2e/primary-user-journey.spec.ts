@@ -55,6 +55,7 @@ test("inscription, vérification, connexion, session et déconnexion", async ({ 
   await expect(page).toHaveURL(/\/dashboard$/, { timeout: 30_000 });
   await expect(page.getByRole("heading", { name: "Votre espace académique" })).toBeVisible();
 
+  await page.waitForLoadState("networkidle");
   await page.getByRole("button", { name: "Se déconnecter" }).click();
   await expect(page).toHaveURL(/\/$/, { timeout: 30_000 });
   await page.goto("/dashboard");
@@ -62,7 +63,7 @@ test("inscription, vérification, connexion, session et déconnexion", async ({ 
 });
 
 test("pages publiques sans overflow horizontal", async ({ page }) => {
-  for (const route of ["/", "/search", "/documents", "/pricing", "/login"]) {
+  for (const route of ["/", "/search", "/documents", "/library", "/universities", "/pricing", "/login", "/signup"]) {
     await page.goto(route, { waitUntil: "domcontentloaded" });
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth);
     expect(overflow, `${route} ne doit pas déborder horizontalement`).toBe(false);
@@ -74,7 +75,11 @@ test("mot de passe oublié, réinitialisation, utilisateur non vérifié et sess
   const authEmail = `auth-${randomUUID()}@example.test`;
   const resetToken = `bicuni-reset-${randomUUID()}`;
   try {
-    await request.post("/api/auth/register", { data: { name: "Compte Auth E2E", email: authEmail, password, role: "STUDENT" } });
+    const registration = await request.post("/api/auth/register", {
+      data: { name: "Compte Auth E2E", email: authEmail, password, role: "STUDENT" },
+      headers: { "x-forwarded-for": `e2e-${randomUUID()}` },
+    });
+    expect(registration.status()).toBe(201);
     const user = await db.user.findUniqueOrThrow({ where: { email: authEmail } });
     await db.user.update({ where: { id: user.id }, data: { emailVerified: new Date() } });
 

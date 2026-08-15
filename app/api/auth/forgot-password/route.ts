@@ -4,11 +4,12 @@ import { consumeAuthAttempt, requestIdentity } from "@/lib/auth/rate-limit";
 import { createOpaqueToken, hashToken, tokenExpiry } from "@/lib/auth/tokens";
 import { forgotPasswordSchema } from "@/lib/auth/validators";
 import { authEmailTemplate, sendEmail } from "@/lib/email/service";
+import { publicOrigin } from "@/lib/http/public-origin";
 
 const neutralMessage = "Si un compte correspond à cette adresse, un email vient d’être envoyé.";
 
 export async function POST(request: Request) {
-  if (!consumeAuthAttempt(`forgot:${requestIdentity(request)}`, 5)) {
+  if (!await consumeAuthAttempt(`forgot:${requestIdentity(request)}`, 5)) {
     return NextResponse.json({ message: neutralMessage }, { status: 202 });
   }
   const parsed = forgotPasswordSchema.safeParse(await request.json().catch(() => null));
@@ -23,7 +24,7 @@ export async function POST(request: Request) {
     data: { userId: user.id, tokenHash: hashToken(token), expires: tokenExpiry(1) },
   });
 
-  const baseUrl = process.env.AUTH_URL ?? new URL(request.url).origin;
+  const baseUrl = publicOrigin(request);
   const resetUrl = `${baseUrl}/reset-password?token=${encodeURIComponent(token)}`;
   await sendEmail({
     to: user.email,

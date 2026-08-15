@@ -28,18 +28,38 @@ export function pidStatusPage(input: {
     h1{margin:12px 0;font-size:clamp(2rem,6vw,3.4rem);letter-spacing:-.05em;line-height:1}
     p{color:var(--muted);line-height:1.7}
     code{display:inline-block;margin:8px 0 18px;padding:8px 10px;border-radius:10px;background:rgba(255,255,255,.05);font-size:.9rem;overflow-wrap:anywhere}
-    a{display:inline-flex;margin-top:8px;color:white;text-decoration:none;font-weight:750}
-    a:hover{color:var(--blue)}
+    .actions{display:flex;flex-wrap:wrap;gap:10px;margin:8px 0 18px}
+    button,a{display:inline-flex;align-items:center;min-height:42px;padding:0 14px;border:1px solid var(--line);border-radius:12px;color:white;background:rgba(255,255,255,.04);text-decoration:none;font-weight:750;cursor:pointer}
+    a.primary,button.primary{background:#2563eb;border-color:transparent}
+    a:hover,button:hover{color:var(--blue)}
   </style>
 </head>
 <body>
   <main>
-    <span class="eyebrow">BICUNI Persistent Identifier</span>
+    <span class="eyebrow">Identifiant pérenne BICUNI</span>
     <h1>${escapeHtml(input.title)}</h1>
-    ${identifier ? `<code>${identifier}</code>` : ""}
+    ${identifier ? `<code id="pid-value">${identifier}</code>
+    <div class="actions">
+      <button class="primary" type="button" id="copy-pid">Copier le PID BICUNI</button>
+    </div>` : ""}
     <p>${escapeHtml(input.body)}</p>
+    <p>Le PID BICUNI est un identifiant interne pérenne. Ce n’est pas un DOI officiel.</p>
     <p><a href="/">Retour à l’accueil BICUNI</a></p>
   </main>
+  <script>
+    const button = document.getElementById("copy-pid");
+    const value = document.getElementById("pid-value");
+    if (button && value) {
+      button.addEventListener("click", async () => {
+        try {
+          await navigator.clipboard.writeText(value.textContent || "");
+          button.textContent = "Copié";
+        } catch {
+          button.textContent = "Copie indisponible";
+        }
+      });
+    }
+  </script>
 </body>
 </html>`;
 }

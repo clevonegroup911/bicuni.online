@@ -3,6 +3,7 @@ import { z } from "zod";
 import { auth } from "@/auth";
 import { db } from "@/lib/db/client";
 import { paymentGateway } from "@/lib/payments/gateway";
+import { publicOrigin } from "@/lib/http/public-origin";
 
 const checkoutSchema = z.object({ planSlug: z.string().min(1).max(64) });
 
@@ -16,7 +17,7 @@ export async function POST(request: Request) {
   const plan = await db.plan.findUnique({ where: { slug: parsed.data.planSlug } });
   if (!plan?.active) return NextResponse.json({ error: "Ce plan n’est pas disponible." }, { status: 404 });
 
-  const origin = process.env.AUTH_URL ?? new URL(request.url).origin;
+  const origin = publicOrigin(request);
   const checkout = await paymentGateway("STRIPE").createSubscriptionCheckout({
     userId: session.user.id,
     customerEmail: session.user.email,
@@ -24,6 +25,8 @@ export async function POST(request: Request) {
     planSlug: plan.slug,
     planName: plan.name,
     priceCents: plan.priceCents,
+    currency: plan.currency,
+    interval: plan.interval,
     successUrl: `${origin}/dashboard?checkout=success`,
     cancelUrl: `${origin}/pricing?checkout=canceled`,
   });
