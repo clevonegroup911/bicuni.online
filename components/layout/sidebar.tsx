@@ -5,6 +5,7 @@ import {
   Clock3,
   CreditCard,
   FileCheck2,
+  ReceiptText,
   Heart,
   LayoutDashboard,
   Settings,
@@ -22,6 +23,7 @@ const variants = {
     ["Favoris", "/dashboard/favorites", Heart],
     ["Historique", "/dashboard/history", Clock3],
     ["Abonnement", "/dashboard/subscription", CreditCard],
+    ["Factures", "/dashboard/invoices", ReceiptText],
     ["Profil", "/dashboard/profile", UserRound],
     ["Paramètres", "/dashboard/settings", Settings],
   ],
@@ -31,6 +33,7 @@ const variants = {
     ["Documents", "/dashboard/documents", BookOpen],
     ["Bibliothèque", "/library", BookOpen],
     ["Abonnement", "/dashboard/subscription", CreditCard],
+    ["Factures", "/dashboard/invoices", ReceiptText],
     ["Profil", "/dashboard/profile", UserRound],
   ],
   admin: [
