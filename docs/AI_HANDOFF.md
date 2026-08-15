@@ -3,10 +3,10 @@
 ## BIC-SEC-002 — contrats back-end Sprint 002
 
 - `GET /api/profile` retourne `{ profile }` pour l’utilisateur authentifié.
-- `PATCH /api/profile` accepte uniquement `name`, `bio`, `title`, `country`, `orcid`, `website`, `researchFields`, `universityId`, `departmentId`. Les champs inconnus (notamment rôle, statut, email ou userId) donnent `400`. Un département doit appartenir à l’institution active fournie.
+- `PATCH /api/profile` accepte uniquement `name`, `image`, `bio`, `title`, `country`, `orcid`, `website`, `researchFields`, `universityId`, `departmentId`, avec permission `profile:write`. Les champs inconnus (notamment rôle, statut, email ou userId) donnent `400`. Un département doit appartenir à l’institution active fournie.
 - `POST /api/payments/portal` retourne `{ url }` pour le customer Stripe appartenant à la session; retour fixe vers `/dashboard/subscription`.
-- `POST /api/subscriptions/cancel` programme `cancel_at_period_end`; l’appel est idempotent et ne permet pas de choisir l’abonnement d’un autre utilisateur.
-- `GET /api/invoices?limit=1..50` retourne `{ invoices }`, filtré exclusivement via les abonnements de la session.
+- `POST /api/subscriptions/cancel` exige `{ atPeriodEnd: true }`, programme `cancel_at_period_end`; l’appel est idempotent et ne permet pas de choisir l’abonnement d’un autre utilisateur.
+- `GET /api/invoices?page=N&limit=1..50` retourne `{ invoices, pagination }`, filtré exclusivement via les abonnements de la session.
 - `POST /api/payments/checkout` accepte toujours `{ planSlug }`; l’en-tête facultatif `Idempotency-Key` (8–128 caractères alphanumériques, `:`, `_`, `-`) stabilise les doubles soumissions. Le plan et le montant restent chargés côté serveur.
 - `POST /api/auth/resend-verification` accepte `{ email }` et répond toujours de façon neutre; il renouvelle le jeton seulement pour un compte réellement en attente.
 - Coupons/remboursements: contrat métier à valider avant modèle ou migration; proposition dans `docs/production-readiness.md`.

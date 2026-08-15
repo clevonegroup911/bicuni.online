@@ -11,7 +11,7 @@ const normalizeOrigin = (value: string | undefined) => {
 export function contentSecurityPolicy(environment = process.env.NODE_ENV) {
   const development = environment !== "production";
   const storageOrigin = normalizeOrigin(process.env.GCS_PUBLIC_ORIGIN);
-  const imageSources = ["'self'", "data:", "blob:", "https://storage.googleapis.com"];
+  const imageSources = ["'self'", "data:", "blob:", "https:"];
   const frameSources = ["'self'", "blob:", "https://js.stripe.com", "https://hooks.stripe.com", "https://storage.googleapis.com"];
   if (storageOrigin) {
     imageSources.push(storageOrigin);

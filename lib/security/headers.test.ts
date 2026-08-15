@@ -8,6 +8,7 @@ describe("security headers", () => {
     expect(policy).toContain("frame-ancestors 'none'");
     expect(policy).toContain("object-src 'none'");
     expect(policy).toContain("upgrade-insecure-requests");
+    expect(policy).toContain("img-src 'self' data: blob: https:");
     expect(policy).not.toContain("unsafe-eval");
     expect(policy).not.toMatch(/(?:^|\s)\*(?:\s|;|$)/);
     expect(policy.match(/unsafe-inline/g)).toHaveLength(2);

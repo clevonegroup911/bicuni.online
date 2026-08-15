@@ -4,6 +4,7 @@ import {
   parseResearchFields,
   PROFILE_API_CONTRACT,
   PROFILE_WRITE_PATH,
+  profileWriteSchema,
   safeImageUrl,
   valuesToPayload,
 } from "./contract";
@@ -75,9 +76,25 @@ describe("contrat profil", () => {
     expect(safeImageUrl("//evil.example")).toBeNull();
     expect(safeImageUrl("/avatars/me.png")).toBe("/avatars/me.png");
     expect(safeImageUrl("https://cdn.example/a.png")).toBe("https://cdn.example/a.png");
+    expect(safeImageUrl("http://cdn.example/a.png")).toBeNull();
   });
 
   it("déduplique les domaines de recherche", () => {
     expect(parseResearchFields(" ia , éducation, ia ")).toEqual(["ia", "éducation"]);
+  });
+
+  it("accepte la forme JSON normalisée avec champs optionnels null", () => {
+    expect(profileWriteSchema.safeParse({
+      name: "Compte test",
+      title: null,
+      bio: null,
+      country: null,
+      orcid: null,
+      website: null,
+      image: null,
+      researchFields: [],
+      universityId: null,
+      departmentId: null,
+    }).success).toBe(true);
   });
 });

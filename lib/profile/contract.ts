@@ -4,12 +4,16 @@ export const PROFILE_WRITE_PATH = "/api/profile";
 export const PROFILE_WRITE_METHOD = "PATCH" as const;
 
 const optionalText = (max: number) =>
-  z.string().trim().max(max).transform((value) => value || null);
+  z.string().trim().max(max).transform((value) => value || null).or(z.null());
+
+const optionalName = z.string().trim().max(120).transform((value) => value || null)
+  .refine((value) => value === null || value.length >= 2, "Le nom doit contenir au moins 2 caractères.")
+  .or(z.null());
 
 const orcidPattern = /^\d{4}-\d{4}-\d{4}-\d{3}[\dX]$/;
 
-export const profileWriteSchema = z.object({
-  name: optionalText(120),
+export const profileWriteFields = {
+  name: optionalName,
   title: optionalText(160),
   bio: optionalText(2000),
   country: optionalText(80),
@@ -18,7 +22,8 @@ export const profileWriteSchema = z.object({
     .trim()
     .max(19)
     .transform((value) => value || null)
-    .refine((value) => value === null || orcidPattern.test(value), "ORCID invalide (ex. 0000-0002-1825-0097)."),
+    .refine((value) => value === null || orcidPattern.test(value), "ORCID invalide (ex. 0000-0002-1825-0097).")
+    .or(z.null()),
   website: z
     .string()
     .trim()
@@ -32,17 +37,21 @@ export const profileWriteSchema = z.object({
       } catch {
         return false;
       }
-    }, "Le site doit être une URL http(s) complète."),
+    }, "Le site doit être une URL http(s) complète.")
+    .or(z.null()),
   image: z
     .string()
     .trim()
     .max(500)
     .transform((value) => value || null)
-    .refine((value) => value === null || Boolean(safeImageUrl(value)), "L’avatar doit être une URL http(s) ou un chemin relatif."),
+    .refine((value) => value === null || Boolean(safeImageUrl(value)), "L’avatar doit être une URL HTTPS ou un chemin relatif.")
+    .or(z.null()),
   researchFields: z.array(z.string().trim().min(2).max(80)).max(12).default([]),
   universityId: z.string().cuid().nullable(),
   departmentId: z.string().cuid().nullable(),
-}).superRefine((value, context) => {
+} as const;
+
+export const profileWriteSchema = z.object(profileWriteFields).strict().superRefine((value, context) => {
   if (value.departmentId && !value.universityId) {
     context.addIssue({
       code: z.ZodIssueCode.custom,
@@ -83,7 +92,7 @@ export function safeImageUrl(value: string | null | undefined): string | null {
   if (trimmed.startsWith("/") && !trimmed.startsWith("//")) return trimmed;
   try {
     const url = new URL(trimmed);
-    if (url.protocol === "https:" || url.protocol === "http:") return url.toString();
+    if (url.protocol === "https:") return url.toString();
   } catch {
     return null;
   }
@@ -124,7 +133,7 @@ export const PROFILE_API_CONTRACT = {
   auth: "session utilisateur ACTIVE, permission profile:write (compte propriétaire)",
   writable: [
     "User.name",
-    "User.image (URL uniquement, pas d’upload GCS)",
+    "User.image (URL HTTPS ou chemin relatif uniquement, pas d’upload GCS)",
     "Profile.title",
     "Profile.bio",
     "Profile.country",
@@ -142,7 +151,7 @@ export const PROFILE_API_CONTRACT = {
     "Ne pas accepter un fichier binaire : le stockage GCS existant est privé et documentaire.",
   ],
   responses: {
-    200: "{ user: { name, image }, profile: { ... } }",
+    200: "{ profile: { id, email, name, image, profile: { ... } } }",
     400: "{ error, fields? }",
     401: "{ error }",
     403: "{ error }",

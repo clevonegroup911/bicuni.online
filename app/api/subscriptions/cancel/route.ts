@@ -1,12 +1,18 @@
 import { createHash } from "node:crypto";
 import { NextResponse } from "next/server";
+import { z } from "zod";
 import { auth } from "@/auth";
 import { db } from "@/lib/db/client";
 import { getStripe } from "@/lib/payments/stripe";
 
-export async function POST() {
+const cancelSchema = z.object({ atPeriodEnd: z.literal(true) }).strict();
+
+export async function POST(request: Request) {
   const session = await auth();
   if (!session?.user?.id) return NextResponse.json({ error: "Authentification requise." }, { status: 401 });
+  const parsed = cancelSchema.safeParse(await request.json().catch(() => null));
+  if (!parsed.success) return NextResponse.json({ error: "Seule l’annulation en fin de période est autorisée." }, { status: 400 });
+  if (!process.env.STRIPE_SECRET_KEY?.trim()) return NextResponse.json({ error: "Stripe n’est pas configuré." }, { status: 503 });
   const subscription = await db.subscription.findFirst({
     where: { userId: session.user.id, provider: "STRIPE", status: { in: ["ACTIVE", "PAST_DUE"] } },
     orderBy: { createdAt: "desc" },

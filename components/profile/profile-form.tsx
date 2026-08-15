@@ -219,7 +219,7 @@ export function ProfileForm({
         <Field
           id="image"
           label="Avatar (URL)"
-          hint="Le stockage GCS actuel est réservé aux documents privés. Seule une URL déjà publique peut être enregistrée."
+          hint="Le stockage GCS actuel est réservé aux documents privés. Utilisez une URL HTTPS publique ou un chemin relatif."
           error={fields.image}
         >
           <input

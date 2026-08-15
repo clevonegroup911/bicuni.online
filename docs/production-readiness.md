@@ -4,6 +4,8 @@
 
 La CSP est générée par `lib/security/headers.ts`. En production, les origines de scripts sont limitées à l’application et `js.stripe.com`; `unsafe-eval` et les jokers sont absents. `unsafe-inline` reste temporairement nécessaire pour les scripts bootstrap Next.js et les attributs de style de l’UI actuelle. La cible de durcissement est une nonce générée par requête et propagée par le middleware, après validation de l’impact sur le rendu statique. Les PDF privés sont affichés dans une iframe via URL signée; `frame-src` autorise donc `self`, `blob:` et Google Cloud Storage. Définir `GCS_PUBLIC_ORIGIN` uniquement pour un domaine CDN HTTPS distinct.
 
+Les polices utilisent une pile système locale : le build ne télécharge plus Inter ou Poppins depuis Google Fonts. Les avatars distants sont limités aux URL HTTPS; `img-src https:` est volontairement nécessaire pour afficher les origines choisies par les utilisateurs sans ouvrir les scripts, connexions ou frames à ces domaines.
+
 ## Redis et rate limiting
 
 `REDIS_URL` active le compteur partagé multi-instance. `REDIS_KEY_PREFIX` sépare les environnements; les identifiants sont hachés avant stockage et les clés expirent avec la fenêtre. Connexion et commandes ont des timeouts courts configurables. En cas de panne, le comportement fail-safe explicite est un repli vers un compteur mémoire par instance: l’authentification reste disponible mais la protection globale est dégradée. Les événements sont journalisés sans URL Redis, clé, IP ni email. Superviser `redis.rate_limit_*` et alerter sur tout repli en production.
