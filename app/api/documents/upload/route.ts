@@ -5,7 +5,7 @@ import { consumeAuthAttempt, requestIdentity } from "@/lib/auth/rate-limit";
 import { hasActiveSubscription } from "@/lib/subscriptions/service";
 import { privateStorage, safeObjectKey } from "@/lib/storage";
 import { documentUploadSchema } from "@/lib/validators/document";
-import { assertCanCreate, slugify } from "@/lib/documents/document-service";
+import { assertCanCreate, assertInstitutionHierarchy, slugify } from "@/lib/documents/document-service";
 import { logger } from "@/lib/observability/logger";
 import { deleteUnboundDocument } from "@/lib/pid/resource-binding";
 
@@ -16,7 +16,7 @@ export async function POST(request: Request) {
   if (session.user.role !== "SUPER_ADMIN" && !await hasActiveSubscription(session.user.id)) {
     return NextResponse.json({ error: "Abonnement actif requis." }, { status: 403 });
   }
-  if (!consumeAuthAttempt(`upload:${session.user.id}:${requestIdentity(request)}`, 20, 60_000)) {
+  if (!await consumeAuthAttempt(`upload:${session.user.id}:${requestIdentity(request)}`, 20, 60_000)) {
     return NextResponse.json({ error: "Trop de requêtes." }, { status: 429 });
   }
 
@@ -26,6 +26,7 @@ export async function POST(request: Request) {
   }
   const category = await db.category.findUnique({ where: { id: parsed.data.categoryId }, select: { id: true } });
   if (!category) return NextResponse.json({ error: "Catégorie inconnue." }, { status: 400 });
+  await assertInstitutionHierarchy(parsed.data);
 
   const objectKey = safeObjectKey(session.user.id, parsed.data.fileName);
   const document = await db.document.create({

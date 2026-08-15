@@ -5,7 +5,14 @@ DECLARE
 BEGIN
   entity_id := CASE WHEN TG_OP = 'DELETE' THEN OLD.id ELSE NEW.id END;
   INSERT INTO "SearchIndexJob" (id, "entityType", "entityId", action, "availableAt", "createdAt")
-  VALUES ('search_' || replace(gen_random_uuid()::text, '-', ''), TG_TABLE_NAME, entity_id, TG_OP, now(), now());
+  VALUES (
+    'search_' || replace(gen_random_uuid()::text, '-', ''),
+    TG_TABLE_NAME,
+    entity_id,
+    TG_OP,
+    timezone('UTC', now()),
+    timezone('UTC', now())
+  );
   RETURN NULL;
 END;
 $$ LANGUAGE plpgsql;

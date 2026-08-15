@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { MetadataForm } from "@/components/documents/metadata-form";
+import { Breadcrumb } from "@/components/ui/breadcrumb";
 import { db } from "@/lib/db/client";
 import { requireActiveSubscriber } from "@/lib/auth/guards";
 
@@ -22,9 +23,10 @@ export default async function UploadPage() {
   return (
     <main className="shell">
       <header className="page-hero">
+        <Breadcrumb items={[{ label: "Accueil", href: "/" }, { label: "Documents", href: "/documents" }, { label: "Téléverser" }]} />
         <span className="eyebrow">Dépôt sécurisé</span>
         <h1>Créer un document.</h1>
-        <p>Les fichiers restent privés jusqu’à validation institutionnelle.</p>
+        <p>Renseignez les métadonnées académiques, puis téléversez le fichier. Les fichiers restent privés jusqu’à validation institutionnelle. Le premier enregistrement crée un brouillon.</p>
       </header>
       <MetadataForm taxonomy={{ categories, universities }} />
     </main>

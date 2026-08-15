@@ -5,9 +5,10 @@ import { consumeAuthAttempt, requestIdentity } from "@/lib/auth/rate-limit";
 import { createOpaqueToken, hashToken, tokenExpiry } from "@/lib/auth/tokens";
 import { registerSchema } from "@/lib/auth/validators";
 import { authEmailTemplate, sendEmail } from "@/lib/email/service";
+import { publicOrigin } from "@/lib/http/public-origin";
 
 export async function POST(request: Request) {
-  if (!consumeAuthAttempt(`register:${requestIdentity(request)}`, 5)) {
+  if (!await consumeAuthAttempt(`register:${requestIdentity(request)}`, 5)) {
     return NextResponse.json({ error: "Trop de tentatives. Réessayez plus tard." }, { status: 429 });
   }
 
@@ -25,7 +26,7 @@ export async function POST(request: Request) {
   const passwordHash = await hash(parsed.data.password, 12);
   const token = createOpaqueToken();
   const verificationHash = hashToken(token);
-  const baseUrl = process.env.AUTH_URL ?? new URL(request.url).origin;
+  const baseUrl = publicOrigin(request);
 
   await db.$transaction(async (transaction) => {
     const user = await transaction.user.create({

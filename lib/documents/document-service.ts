@@ -1,4 +1,4 @@
-import type { Prisma } from "@prisma/client";
+import type { DocumentType, Prisma } from "@prisma/client";
 import { db } from "../db/client";
 import type { DocumentActor } from "@/lib/documents/permissions";
 import { canCreateDocument, canDeleteDocument, canEditDocument, canSubmitDocument } from "@/lib/documents/permissions";
@@ -29,13 +29,33 @@ export const documentInclude = {
 } satisfies Prisma.DocumentInclude;
 
 export class DocumentService {
-  async listPublic(input: { page: number; pageSize: number; query?: string }) {
+  async listPublic(input: {
+    page: number;
+    pageSize: number;
+    query?: string;
+    category?: string;
+    type?: DocumentType;
+    university?: string;
+    year?: number;
+    sort?: "recent" | "views";
+  }) {
     const where: Prisma.DocumentWhereInput = {
-      status: { in: ["APPROVED", "PUBLISHED"] }, deletedAt: null,
+      status: { in: ["APPROVED", "PUBLISHED"] },
+      deletedAt: null,
       ...(input.query ? { OR: [{ title: { contains: input.query, mode: "insensitive" } }, { abstract: { contains: input.query, mode: "insensitive" } }] } : {}),
+      ...(input.category ? { category: { name: { equals: input.category, mode: "insensitive" } } } : {}),
+      ...(input.type ? { type: input.type } : {}),
+      ...(input.university ? { university: { name: { equals: input.university, mode: "insensitive" } } } : {}),
+      ...(input.year ? { year: input.year } : {}),
     };
     const [items, total] = await db.$transaction([
-      db.document.findMany({ where, include: documentInclude, orderBy: { publishedAt: "desc" }, skip: (input.page - 1) * input.pageSize, take: input.pageSize }),
+      db.document.findMany({
+        where,
+        include: documentInclude,
+        orderBy: input.sort === "views" ? { viewCount: "desc" } : { publishedAt: "desc" },
+        skip: (input.page - 1) * input.pageSize,
+        take: input.pageSize,
+      }),
       db.document.count({ where }),
     ]);
     return { items: items.map(sanitizeDocumentForClient), total, page: input.page, pageSize: input.pageSize };
@@ -45,6 +65,11 @@ export class DocumentService {
     const current = await db.document.findUnique({ where: { id } });
     if (!current) throw new DocumentDomainError("Document introuvable.", 404);
     if (!canEditDocument(actor, current)) throw new DocumentDomainError("Seul un brouillon vous appartenant peut être modifié.", 403);
+    await assertInstitutionHierarchy({
+      universityId: data.universityId === undefined ? current.universityId : data.universityId,
+      facultyId: data.facultyId === undefined ? current.facultyId : data.facultyId,
+      departmentId: data.departmentId === undefined ? current.departmentId : data.departmentId,
+    });
     const { keywords, ...metadata } = data;
     return db.document.update({ where: { id }, data: {
       ...metadata,
@@ -74,6 +99,46 @@ export class DocumentService {
 
 export function assertCanCreate(actor: DocumentActor) {
   if (!canCreateDocument(actor)) throw new DocumentDomainError("Création refusée.", 403);
+}
+
+export async function assertInstitutionHierarchy(input: {
+  universityId?: string | null;
+  facultyId?: string | null;
+  departmentId?: string | null;
+}) {
+  if (input.facultyId && !input.universityId) {
+    throw new DocumentDomainError("Une faculté doit appartenir à une université sélectionnée.");
+  }
+  if (input.departmentId && !input.facultyId) {
+    throw new DocumentDomainError("Un département doit appartenir à une faculté sélectionnée.");
+  }
+  if (!input.universityId) return;
+
+  const university = await db.university.findUnique({
+    where: { id: input.universityId },
+    select: { id: true, status: true },
+  });
+  if (!university || university.status !== "ACTIVE") {
+    throw new DocumentDomainError("Université inconnue ou inactive.");
+  }
+  if (!input.facultyId) return;
+
+  const faculty = await db.faculty.findUnique({
+    where: { id: input.facultyId },
+    select: { universityId: true },
+  });
+  if (!faculty || faculty.universityId !== input.universityId) {
+    throw new DocumentDomainError("La faculté ne correspond pas à l’université sélectionnée.");
+  }
+  if (!input.departmentId) return;
+
+  const department = await db.department.findUnique({
+    where: { id: input.departmentId },
+    select: { facultyId: true },
+  });
+  if (!department || department.facultyId !== input.facultyId) {
+    throw new DocumentDomainError("Le département ne correspond pas à la faculté sélectionnée.");
+  }
 }
 export function slugify(value: string) { return value.toLowerCase().normalize("NFKD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "").slice(0, 80); }
 

@@ -1,2 +1,90 @@
-import { Role,UserStatus }from"@prisma/client";import{AdminShell}from"@/components/admin/admin-shell";import{AdminUserActions}from"@/components/admin/admin-user-actions";import{CreateAdminForm}from"@/components/admin/create-admin-form";import{requirePermission}from"@/lib/auth/guards";import{AdminUserService}from"@/lib/admin/user-admin-service";
-export default async function AdminUsers({searchParams}:{searchParams:Promise<{q?:string;page?:string;role?:string;status?:string}>}){const user=await requirePermission("admin:users:read");const params=await searchParams;const role=Object.values(Role).find(item=>item===params.role);const status=Object.values(UserStatus).find(item=>item===params.status);const result=await new AdminUserService().list({q:params.q??"",page:Math.max(1,Number(params.page)||1),role,status});return <AdminShell user={user}><div className="admin-page"><header className="admin-title"><span className="eyebrow">Identités & accès</span><h1>Utilisateurs</h1><p>{result.total} compte{result.total>1?"s":""} correspondant aux filtres.</p></header><form className="admin-filters"><input className="input" name="q" defaultValue={params.q} placeholder="Nom ou email"/><select className="input" name="role" defaultValue={params.role??""}><option value="">Tous les rôles</option>{Object.values(Role).map(value=><option key={value}>{value}</option>)}</select><select className="input" name="status" defaultValue={params.status??""}><option value="">Tous les statuts</option>{Object.values(UserStatus).map(value=><option key={value}>{value}</option>)}</select><button className="button">Filtrer</button></form>{user.role==="SUPER_ADMIN"&&<CreateAdminForm/>}<div className="admin-table-wrap glass"><table className="admin-table"><thead><tr><th>Utilisateur</th><th>Rôle</th><th>Statut</th><th>Inscription</th><th>Dernière connexion</th><th>Actions</th></tr></thead><tbody>{result.users.map(item=><tr key={item.id}><td><strong>{item.name??"Sans nom"}</strong><small>{item.email}</small></td><td>{item.role}</td><td><span className={`admin-status ${item.status.toLowerCase()}`}>{item.status}</span></td><td>{item.createdAt.toLocaleDateString("fr-FR")}</td><td>{item.lastLoginAt?.toLocaleString("fr-FR")??"Jamais"}</td><td>{user.role==="SUPER_ADMIN"?<AdminUserActions id={item.id} role={item.role} status={item.status} disabled={item.id===user.id}/>:<small>Consultation</small>}</td></tr>)}</tbody></table></div></div></AdminShell>}
+import { Role, UserStatus } from "@prisma/client";
+import { Users } from "lucide-react";
+import { AdminShell } from "@/components/admin/admin-shell";
+import { AdminUserActions } from "@/components/admin/admin-user-actions";
+import { CreateAdminForm } from "@/components/admin/create-admin-form";
+import { EmptyState } from "@/components/ui/empty-state";
+import { Pagination, buildPageHref } from "@/components/ui/pagination";
+import { requirePermission } from "@/lib/auth/guards";
+import { AdminUserService } from "@/lib/admin/user-admin-service";
+
+export default async function AdminUsers({
+  searchParams,
+}: {
+  searchParams: Promise<{ q?: string; page?: string; role?: string; status?: string }>;
+}) {
+  const user = await requirePermission("admin:users:read");
+  const params = await searchParams;
+  const role = Object.values(Role).find((item) => item === params.role);
+  const status = Object.values(UserStatus).find((item) => item === params.status);
+  const result = await new AdminUserService().list({
+    q: params.q ?? "",
+    page: Math.max(1, Number(params.page) || 1),
+    role,
+    status,
+  });
+  return (
+    <AdminShell user={user}>
+      <div className="admin-page">
+        <header className="admin-title">
+          <span className="eyebrow">Identités & accès</span>
+          <h1>Utilisateurs</h1>
+          <p>{result.total} compte{result.total > 1 ? "s" : ""} correspondant aux filtres.</p>
+        </header>
+        <form className="admin-filters">
+          <input className="input" name="q" defaultValue={params.q} placeholder="Nom ou email" aria-label="Rechercher un utilisateur" />
+          <select className="input" name="role" defaultValue={params.role ?? ""} aria-label="Rôle">
+            <option value="">Tous les rôles</option>
+            {Object.values(Role).map((value) => <option key={value}>{value}</option>)}
+          </select>
+          <select className="input" name="status" defaultValue={params.status ?? ""} aria-label="Statut">
+            <option value="">Tous les statuts</option>
+            {Object.values(UserStatus).map((value) => <option key={value}>{value}</option>)}
+          </select>
+          <button className="button">Filtrer</button>
+        </form>
+        {user.role === "SUPER_ADMIN" && <CreateAdminForm />}
+        {result.users.length ? (
+          <div className="admin-table-wrap glass">
+            <table className="admin-table">
+              <thead>
+                <tr>
+                  <th>Utilisateur</th>
+                  <th>Rôle</th>
+                  <th>Statut</th>
+                  <th>Inscription</th>
+                  <th>Dernière connexion</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {result.users.map((item) => (
+                  <tr key={item.id}>
+                    <td><strong>{item.name ?? "Sans nom"}</strong><small>{item.email}</small></td>
+                    <td>{item.role}</td>
+                    <td><span className={`admin-status ${item.status.toLowerCase()}`}>{item.status}</span></td>
+                    <td>{item.createdAt.toLocaleDateString("fr-FR")}</td>
+                    <td>{item.lastLoginAt?.toLocaleString("fr-FR") ?? "Jamais"}</td>
+                    <td>
+                      {user.role === "SUPER_ADMIN"
+                        ? <AdminUserActions id={item.id} role={item.role} status={item.status} disabled={item.id === user.id} />
+                        : <small>Consultation</small>}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <EmptyState icon={Users} title="Aucun utilisateur" description="Aucun compte ne correspond à ces filtres." />
+        )}
+        <Pagination
+          page={result.page}
+          total={result.total}
+          pageSize={result.pageSize}
+          hrefForPage={(page) => buildPageHref("/admin/users", { q: params.q, role: params.role, status: params.status }, page)}
+        />
+      </div>
+    </AdminShell>
+  );
+}

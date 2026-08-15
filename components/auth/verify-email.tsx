@@ -29,8 +29,16 @@ export function VerifyEmail({ token, email }: { token: string; email: string }) 
     });
   }, [email, token]);
 
-  return <AuthShell eyebrow={<><MailCheck size={15}/> Vérification</>} title="Confirmer votre adresse." description="Cette étape protège votre identité académique."
-    footer={state === "success" ? <Link href="/login?verified=1" className="auth-link">Continuer vers la connexion</Link> : undefined}>
-    <p role="status" className={state === "error" ? "form-error" : "form-success"}>{message}</p>
-  </AuthShell>;
+  return (
+    <AuthShell
+      eyebrow={<><MailCheck size={15} /> Vérification</>}
+      title="Confirmer votre adresse."
+      description="Cette étape protège votre identité académique."
+      footer={state === "success" ? <Link href="/login?verified=1" className="auth-link">Continuer vers la connexion</Link> : undefined}
+    >
+      {state === "pending" ? <p role="status" className="muted">{message}</p> : (
+        <p role="status" className={state === "error" ? "form-error" : "form-success"}>{message}</p>
+      )}
+    </AuthShell>
+  );
 }
