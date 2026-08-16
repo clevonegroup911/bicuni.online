@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 const protectedPaths = ["/dashboard", "/admin", "/university", "/api/admin"];
 const publicAdminRoutes = new Set(["/admin/login", "/admin/denied"]);
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const isProtected = protectedPaths.some((path) => pathname === path || pathname.startsWith(`${path}/`));
   const isPublicAdminRoute = publicAdminRoutes.has(pathname);

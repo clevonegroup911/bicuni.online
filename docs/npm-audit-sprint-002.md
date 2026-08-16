@@ -1,6 +1,6 @@
 # Audit npm — Sprint 002
 
-Audit exécuté le 16 août 2026 avec `npm audit --json` après `npm ci`, sans `npm audit fix` ni mise à jour forcée.
+Audit initial exécuté le 16 août 2026 avec `npm audit --json` après `npm ci`, avant toute remédiation.
 
 ## Résultat
 
@@ -32,3 +32,23 @@ Audit exécuté le 16 août 2026 avec `npm audit --json` après `npm ci`, sans `
 ## Décision
 
 Les six alertes élevées ne constituent pas six vulnérabilités runtime exploitables : trois sont limitées aux outils de build/lint, deux chemins Next ne sont pas utilisés par l’application actuelle, et l’entrée Next agrège ces dépendances. L’intégration n’est donc pas bloquée par l’audit, mais les éléments P1 exigent une tâche dédiée de montée de version et une nouvelle validation complète avant production.
+
+## Remédiation BIC-DEPS-002
+
+La tâche dédiée a appliqué la plus petite version de Next proposée par l'audit, sans `--force` ni `overrides` :
+
+- `next` et le binaire SWC Linux : `15.5.22` vers `16.3.1` ;
+- `eslint-config-next` : `15.5.22` vers `16.3.1` pour conserver l'alignement du framework ;
+- PostCSS embarqué par Next : `8.4.31` vers `8.5.23` ;
+- Sharp optionnel : `0.34.5` vers `0.35.3` ;
+- correctifs transitifs sans rupture : `brace-expansion@1.1.18`, `js-yaml@4.3.1` et `nanoid@3.3.18`.
+
+Compatibilité Next 16 :
+
+- le runtime de validation est Node `22.22.2`, supérieur au minimum Node `20.9` de Next 16 ;
+- ESLint consomme désormais directement les configurations plates de `eslint-config-next` ;
+- la convention `middleware.ts` a été renommée `proxy.ts`, avec le même filtrage d'authentification et les mêmes matchers ;
+- les réglages TypeScript exigés par Next 16 (`react-jsx` et types de routes générés) sont conservés ;
+- trois effets React ont été adaptés à la nouvelle règle ESLint sans désactiver cette protection.
+
+Après remédiation, `npm audit` signale 5 vulnérabilités modérées et aucune vulnérabilité élevée ou critique. Elles proviennent exclusivement de la chaîne `@google-cloud/storage > gaxios/teeny-request/retry-request > uuid`. Le correctif automatique restant exige `--force` et propose le downgrade majeur `@google-cloud/storage@5.18.3`; il est refusé. Le chemin vulnérable concerne les variantes UUID v3/v5/v6 avec buffer fourni, fonctionnalité que le code BICUNI n'appelle pas.

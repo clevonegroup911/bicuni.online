@@ -6,15 +6,12 @@ import { useEffect, useState } from "react";
 import { AuthShell } from "@/components/auth/auth-shell";
 
 export function VerifyEmail({ token, email }: { token: string; email: string }) {
-  const [state, setState] = useState<"pending" | "success" | "error">("pending");
-  const [message, setMessage] = useState("Vérification de votre adresse…");
+  const isComplete = Boolean(token && email);
+  const [state, setState] = useState<"pending" | "success" | "error">(isComplete ? "pending" : "error");
+  const [message, setMessage] = useState(isComplete ? "Vérification de votre adresse…" : "Lien de vérification incomplet.");
 
   useEffect(() => {
-    if (!token || !email) {
-      setState("error");
-      setMessage("Lien de vérification incomplet.");
-      return;
-    }
+    if (!token || !email) return;
     fetch("/api/auth/verify-email", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
