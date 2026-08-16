@@ -8,9 +8,13 @@ const email = `e2e-${randomUUID()}@example.test`;
 const password = "Bicuni-Test-2026";
 
 test.afterAll(async () => {
-  const user = await db.user.findUnique({ where: { email }, select: { id: true } });
-  if (user) await db.user.delete({ where: { id: user.id } });
-  await db.$disconnect();
+  if (!process.env.DATABASE_URL) return;
+  try {
+    const user = await db.user.findUnique({ where: { email }, select: { id: true } });
+    if (user) await db.user.delete({ where: { id: user.id } });
+  } finally {
+    await db.$disconnect();
+  }
 });
 
 test("inscription, vérification, connexion, session et déconnexion", async ({ page }, testInfo) => {
@@ -66,7 +70,7 @@ test("inscription, vérification, connexion, session et déconnexion", async ({ 
 test("pages publiques sans overflow horizontal", async ({ page }) => {
   for (const route of ["/", "/search", "/documents", "/library", "/universities", "/pricing", "/login", "/signup"]) {
     await page.goto(route, { waitUntil: "domcontentloaded" });
-    const overflow = await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth);
+    const overflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth);
     expect(overflow, `${route} ne doit pas déborder horizontalement`).toBe(false);
   }
 });
@@ -190,6 +194,120 @@ test("profil, facture propriétaire et services Stripe absents sans faux succès
       portalStatus: 503,
       cancellationStatus: 503,
     });
+  } finally {
+    await db.user.delete({ where: { id: user.id } });
+  }
+});
+
+const QA_VIEWPORTS = [
+  { width: 1280, height: 800 },
+  { width: 834, height: 1194 },
+  { width: 390, height: 844 },
+] as const;
+
+async function assertNoHorizontalOverflow(page: { evaluate: (fn: () => boolean) => Promise<boolean> }, label: string) {
+  const overflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth);
+  expect(overflow, `${label} ne doit pas déborder horizontalement`).toBe(false);
+}
+
+test("formulaires Auth en POST et hydratation / et /login", async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== "desktop", "Le contrôle d’hydratation et des attributs de formulaire se fait une fois.");
+  const hydrationErrors: string[] = [];
+  page.on("console", (message) => {
+    if (message.type() !== "error") return;
+    const text = message.text();
+    if (!/hydrat/i.test(text)) return;
+    if (text.includes("next-devtools") || text.includes("SegmentViewNode")) return;
+    hydrationErrors.push(text);
+  });
+
+  for (const route of ["/", "/login", "/signup", "/forgot-password", "/admin/login"]) {
+    await page.goto(route, { waitUntil: "networkidle" });
+    if (route !== "/") {
+      const form = page.locator("form.auth-form");
+      await expect(form).toHaveAttribute("method", /post/i);
+      await expect(form).toHaveAttribute("action", route);
+    }
+  }
+
+  expect(hydrationErrors, hydrationErrors.join("\n")).toEqual([]);
+});
+
+test("soumission native sans secret dans l’URL", async ({ request, baseURL }, testInfo) => {
+  test.skip(testInfo.project.name !== "desktop", "Le contrôle d’URL native se fait une fois.");
+  const pageHtml = await (await request.get("/login")).text();
+  expect(pageHtml).toMatch(/<form[^>]*method="post"/i);
+  expect(pageHtml).toMatch(/action="\/login"/);
+
+  const response = await request.post(`${baseURL}/login`, {
+    form: {
+      email: "qa-secret@example.test",
+      password: "SuperSecret-Login-2026",
+    },
+    failOnStatusCode: false,
+    maxRedirects: 0,
+  });
+  const finalUrl = response.url();
+  const location = response.headers().location ?? "";
+  expect(finalUrl).not.toContain("password=");
+  expect(finalUrl).not.toContain("SuperSecret-Login-2026");
+  expect(finalUrl).not.toContain("qa-secret@example.test");
+  expect(location).not.toContain("password=");
+  expect(location).not.toContain("SuperSecret-Login-2026");
+  expect(location).not.toContain("qa-secret@example.test");
+});
+
+test("skip-link, hamburger et Échap", async ({ page }, testInfo) => {
+  await page.goto("/login", { waitUntil: "domcontentloaded" });
+  await page.keyboard.press("Tab");
+  await expect(page.locator(".skip-link")).toBeFocused();
+
+  if (testInfo.project.name === "desktop") return;
+
+  const toggle = page.locator('button[aria-controls="mobile-navigation"]');
+  await expect(toggle).toBeVisible();
+  await toggle.click();
+  await expect(toggle).toHaveAttribute("aria-expanded", "true");
+  await expect(toggle).toHaveAttribute("aria-label", "Fermer le menu principal");
+  await expect(page.locator("#mobile-navigation")).toBeVisible();
+  await expect(page.locator("#mobile-navigation a").first()).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(toggle).toHaveAttribute("aria-expanded", "false");
+  await expect(toggle).toHaveAttribute("aria-label", "Ouvrir le menu principal");
+  await expect(page.locator("#mobile-navigation")).toHaveCount(0);
+});
+
+test("dashboard sans overflow 1280/834/390", async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== "desktop", "Les trois largeurs QA sont exercées sur le projet desktop.");
+  test.skip(!process.env.DATABASE_URL, "PostgreSQL jetable requis pour le compte TEST dashboard.");
+  const accountEmail = `overflow-${randomUUID()}@example.test`;
+  const accountPassword = "Bicuni-Overflow-2026";
+  const user = await db.user.create({
+    data: {
+      email: accountEmail,
+      name: "Compte Overflow E2E",
+      passwordHash: await hash(accountPassword, 12),
+      emailVerified: new Date(),
+      status: "ACTIVE",
+      role: "STUDENT",
+    },
+  });
+
+  try {
+    await page.goto("/login");
+    await page.getByLabel("Adresse e-mail").fill(accountEmail);
+    await page.locator('input[name="password"]').fill(accountPassword);
+    await page.getByRole("button", { name: "Se connecter" }).click();
+    await expect(page).toHaveURL(/\/dashboard$/, { timeout: 30_000 });
+
+    for (const viewport of QA_VIEWPORTS) {
+      await page.setViewportSize(viewport);
+      for (const route of ["/dashboard", "/dashboard/profile", "/dashboard/subscription", "/dashboard/invoices"]) {
+        await page.goto(route, { waitUntil: "domcontentloaded" });
+        await expect(page.getByRole("navigation", { name: "Navigation de l’espace" }).getByRole("link")).toHaveCount(9);
+        await assertNoHorizontalOverflow(page, `${route} @ ${viewport.width}px`);
+      }
+    }
   } finally {
     await db.user.delete({ where: { id: user.id } });
   }

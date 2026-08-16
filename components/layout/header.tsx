@@ -78,7 +78,7 @@ export function Header({ user }: { user?: { name: string | null; isAdmin: boolea
           <button
             className="mobile-toggle icon-button"
             onClick={() => setOpen(!open)}
-            aria-expanded={open}
+            aria-expanded={open ? "true" : "false"}
             aria-controls="mobile-navigation"
             aria-label={open ? "Fermer le menu principal" : "Ouvrir le menu principal"}
             type="button"

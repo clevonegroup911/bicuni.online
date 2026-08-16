@@ -42,7 +42,7 @@ export function AdminLoginForm() {
   }
 
   return (
-    <form className="auth-form" onSubmit={submit}>
+    <form className="auth-form" method="post" action="/admin/login" onSubmit={submit} autoComplete="on">
       {error && <p className="form-error" role="alert">{error}</p>}
       <Field id="admin-email" label="Email administratif">
         <input id="admin-email" className="input" type="email" name="email" autoComplete="username" required />
@@ -50,7 +50,7 @@ export function AdminLoginForm() {
       <Field id="admin-password" label="Mot de passe">
         <input id="admin-password" className="input" type="password" name="password" autoComplete="current-password" required />
       </Field>
-      <button className="button" disabled={pending} aria-busy={pending}>{pending ? "Vérification…" : "Accéder au Back Office"}</button>
+      <button className="button" type="submit" disabled={pending} aria-busy={pending}>{pending ? "Vérification…" : "Accéder au Back Office"}</button>
     </form>
   );
 }

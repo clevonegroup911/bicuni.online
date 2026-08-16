@@ -43,12 +43,12 @@ export function ForgotPasswordForm() {
       footer={<Link href="/login" className="auth-link">Retour à la connexion</Link>}
     >
       {message ? <p role="status" className="form-success">{message}</p> : (
-        <form onSubmit={submit} className="auth-form">
+        <form method="post" action="/forgot-password" onSubmit={submit} className="auth-form" autoComplete="on">
           {error && <p role="alert" className="form-error">{error}</p>}
           <Field id="email" label="Adresse e-mail">
             <input id="email" className="input" name="email" type="email" autoComplete="email" required />
           </Field>
-          <button className="button" disabled={pending} aria-busy={pending}>{pending ? "Envoi…" : "Envoyer le lien"}</button>
+          <button className="button" type="submit" disabled={pending} aria-busy={pending}>{pending ? "Envoi…" : "Envoyer le lien"}</button>
         </form>
       )}
     </AuthShell>
