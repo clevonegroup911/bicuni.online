@@ -31,4 +31,23 @@ describe("email service", () => {
       .rejects.toThrow("Échec d’envoi email (400).");
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
+
+  it("autorise un transport HTTP uniquement sur loopback pour le QA", async () => {
+    vi.stubEnv("RESEND_API_KEY", "test-key");
+    vi.stubEnv("EMAIL_FROM", "test@bicuni.online");
+    vi.stubEnv("RESEND_API_URL", "http://127.0.0.1:18089/emails");
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ id: "local-test" }), { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+    await expect(sendEmail({ to: "recipient@example.test", subject: "Test", html: "<p>Test</p>" }))
+      .resolves.toEqual({ id: "local-test" });
+    expect(fetchMock).toHaveBeenCalledWith("http://127.0.0.1:18089/emails", expect.any(Object));
+  });
+
+  it("refuse un transport HTTP non loopback", async () => {
+    vi.stubEnv("RESEND_API_KEY", "test-key");
+    vi.stubEnv("EMAIL_FROM", "test@bicuni.online");
+    vi.stubEnv("RESEND_API_URL", "http://email.example.test/emails");
+    await expect(sendEmail({ to: "recipient@example.test", subject: "Test", html: "<p>Test</p>" }))
+      .rejects.toThrow(/HTTPS ou un loopback HTTP/);
+  });
 });

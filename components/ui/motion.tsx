@@ -1,7 +1,11 @@
 "use client";
 
 import { motion, useReducedMotion } from "framer-motion";
-import { useEffect, useState, type ReactNode } from "react";
+import { useSyncExternalStore, type ReactNode } from "react";
+
+const subscribeToHydration = () => () => undefined;
+const clientSnapshot = () => true;
+const serverSnapshot = () => false;
 
 export function Reveal({
   children,
@@ -13,11 +17,7 @@ export function Reveal({
   delay?: number;
 }) {
   const reduced = useReducedMotion();
-  const [ready, setReady] = useState(false);
-
-  useEffect(() => {
-    setReady(true);
-  }, []);
+  const ready = useSyncExternalStore(subscribeToHydration, clientSnapshot, serverSnapshot);
 
   if (!ready || reduced) {
     return <div className={className}>{children}</div>;

@@ -282,6 +282,7 @@ test("dashboard sans overflow 1280/834/390", async ({ page }, testInfo) => {
   test.skip(!process.env.DATABASE_URL, "PostgreSQL jetable requis pour le compte TEST dashboard.");
   const accountEmail = `overflow-${randomUUID()}@example.test`;
   const accountPassword = "Bicuni-Overflow-2026";
+  const plan = await db.plan.findUniqueOrThrow({ where: { slug: "starter" } });
   const user = await db.user.create({
     data: {
       email: accountEmail,
@@ -290,6 +291,15 @@ test("dashboard sans overflow 1280/834/390", async ({ page }, testInfo) => {
       emailVerified: new Date(),
       status: "ACTIVE",
       role: "STUDENT",
+      subscriptions: {
+        create: {
+          planId: plan.id,
+          provider: "STRIPE",
+          providerRef: `overflow-test-${randomUUID()}`,
+          status: "ACTIVE",
+          currentPeriodEnd: new Date(Date.now() + 86_400_000),
+        },
+      },
     },
   });
 

@@ -7,6 +7,16 @@ type EmailMessage = {
 import { logger } from "@/lib/observability/logger";
 
 const RETRYABLE_STATUS = new Set([408, 429, 500, 502, 503, 504]);
+const DEFAULT_RESEND_API_URL = "https://api.resend.com/emails";
+
+function resendApiUrl() {
+  const url = new URL(process.env.RESEND_API_URL?.trim() || DEFAULT_RESEND_API_URL);
+  const loopback = url.hostname === "localhost" || url.hostname === "127.0.0.1" || url.hostname === "[::1]";
+  if (url.protocol !== "https:" && !(url.protocol === "http:" && loopback)) {
+    throw new Error("RESEND_API_URL doit utiliser HTTPS ou un loopback HTTP pour les tests.");
+  }
+  return url.href;
+}
 
 function delay(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -23,11 +33,12 @@ export async function sendEmail(message: EmailMessage) {
     logger.info("email.dev_skipped", { subject: message.subject });
     return { id: "development-skip" };
   }
+  const apiUrl = resendApiUrl();
 
   for (let attempt = 1; attempt <= 3; attempt += 1) {
     let response: Response;
     try {
-      response = await fetch("https://api.resend.com/emails", {
+      response = await fetch(apiUrl, {
         method: "POST",
         headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
         body: JSON.stringify({ from, ...message }),

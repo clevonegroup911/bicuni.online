@@ -16,7 +16,7 @@ Les polices utilisent une pile système locale : le build ne télécharge plus I
 
 ## Email
 
-Configurer `RESEND_API_KEY`, `EMAIL_FROM` et `PUBLIC_APP_URL` (HTTPS en production). Les liens de vérification expirent après 24 h et les liens de réinitialisation après 1 h. Les jetons sont aléatoires et seulement leur empreinte est stockée. L’oubli de mot de passe répond de façon neutre. Resend est appelé avec un timeout de 5 s et jusqu’à trois tentatives pour les erreurs transitoires; aucun destinataire ou jeton n’est journalisé.
+Configurer `RESEND_API_KEY`, `EMAIL_FROM` et `PUBLIC_APP_URL` (HTTPS en production). `RESEND_API_URL` reste absent en production afin d’utiliser l’API HTTPS Resend par défaut; son override accepte uniquement HTTPS ou un loopback HTTP pour un fournisseur mock de QA isolé. Les liens de vérification expirent après 24 h et les liens de réinitialisation après 1 h. Les jetons sont aléatoires et seulement leur empreinte est stockée. L’oubli de mot de passe répond de façon neutre. Resend est appelé avec un timeout de 5 s et jusqu’à trois tentatives pour les erreurs transitoires; aucun destinataire ou jeton n’est journalisé.
 
 ## Baseline PostgreSQL existante
 
