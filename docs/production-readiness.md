@@ -1,10 +1,14 @@
 # Préparation production — sécurité et services
 
+## Next.js 16 et fichiers de gouvernance
+
+`next dev` 16.3.1 peut ajouter automatiquement un bloc `nextjs-agent-rules` à `AGENTS.md`. Ce bloc généré ne fait pas partie du système d’opération BICUNI et ne doit jamais être commité. Après tout démarrage du serveur de développement, restaurer `AGENTS.md` depuis le SHA de base autorisé et vérifier que `AGENTS.md`, `.agents/`, `.codex/` et `.cursor/rules/` sont identiques à cette base. Les consignes techniques Next.js restent dans cette documentation.
+
 ## CSP et origines
 
-La CSP est générée par `lib/security/headers.ts`. En production, les origines de scripts sont limitées à l’application et `js.stripe.com`; `unsafe-eval` et les jokers sont absents. `unsafe-inline` reste temporairement nécessaire pour les scripts bootstrap Next.js et les attributs de style de l’UI actuelle. La cible de durcissement est une nonce générée par requête et propagée par le middleware, après validation de l’impact sur le rendu statique. Les PDF privés sont affichés dans une iframe via URL signée; `frame-src` autorise donc `self`, `blob:` et Google Cloud Storage. Définir `GCS_PUBLIC_ORIGIN` uniquement pour un domaine CDN HTTPS distinct.
+La CSP est générée par `lib/security/headers.ts`. En production, les origines de scripts sont limitées à l’application et `js.stripe.com`; `unsafe-eval` et les jokers sont absents. `upgrade-insecure-requests` n’est émis que lorsque l’origine publique configurée (`PUBLIC_APP_URL`, puis `AUTH_URL`, puis `APP_URL`) est une URL HTTPS valide, afin de préserver les smoke tests de build sur loopback HTTP. `unsafe-inline` reste temporairement nécessaire pour les scripts bootstrap Next.js et les attributs de style de l’UI actuelle. La cible de durcissement est une nonce générée par requête et propagée par le proxy, après validation de l’impact sur le rendu statique. Les PDF privés sont affichés dans une iframe via URL signée; `frame-src` autorise donc `self`, `blob:` et Google Cloud Storage. Définir `GCS_PUBLIC_ORIGIN` uniquement pour un domaine CDN HTTPS distinct.
 
-Les polices utilisent une pile système locale : le build ne télécharge plus Inter ou Poppins depuis Google Fonts. Les avatars distants sont limités aux URL HTTPS; `img-src https:` est volontairement nécessaire pour afficher les origines choisies par les utilisateurs sans ouvrir les scripts, connexions ou frames à ces domaines.
+Les polices utilisent une pile système locale : le build ne télécharge plus Inter ou Poppins depuis Google Fonts. `img-src` autorise uniquement l’application, les images `data:`/`blob:` effectivement utilisées par l’UI, `storage.googleapis.com` et l’éventuelle origine GCS HTTPS explicite. Les avatars hébergés sur une autre origine doivent être migrés vers une origine explicitement autorisée avant affichage; aucun joker ni schéma `https:` générique n’est accepté.
 
 ## Redis et rate limiting
 

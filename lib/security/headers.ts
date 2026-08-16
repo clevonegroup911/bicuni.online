@@ -8,10 +8,21 @@ const normalizeOrigin = (value: string | undefined) => {
   }
 };
 
+const configuredPublicOrigin = () => {
+  const value = process.env.PUBLIC_APP_URL?.trim() || process.env.AUTH_URL?.trim() || process.env.APP_URL?.trim();
+  if (!value) return null;
+  try {
+    const url = new URL(value);
+    return url.protocol === "http:" || url.protocol === "https:" ? url : null;
+  } catch {
+    return null;
+  }
+};
+
 export function contentSecurityPolicy(environment = process.env.NODE_ENV) {
   const development = environment !== "production";
   const storageOrigin = normalizeOrigin(process.env.GCS_PUBLIC_ORIGIN);
-  const imageSources = ["'self'", "data:", "blob:", "https:"];
+  const imageSources = ["'self'", "data:", "blob:", "https://storage.googleapis.com"];
   const frameSources = ["'self'", "blob:", "https://js.stripe.com", "https://hooks.stripe.com", "https://storage.googleapis.com"];
   if (storageOrigin) {
     imageSources.push(storageOrigin);
@@ -36,7 +47,9 @@ export function contentSecurityPolicy(environment = process.env.NODE_ENV) {
     "frame-ancestors 'none'",
     "manifest-src 'self'",
   ];
-  if (!development) directives.push("upgrade-insecure-requests");
+  if (!development && configuredPublicOrigin()?.protocol === "https:") {
+    directives.push("upgrade-insecure-requests");
+  }
   return directives.join("; ");
 }
 
