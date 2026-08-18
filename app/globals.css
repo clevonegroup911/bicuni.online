@@ -22,3 +22,6 @@
 @media(max-width:1080px){.catalog-toolbar{grid-template-columns:1fr 1fr}.catalog-toolbar>#catalog-q,.catalog-toolbar>.button{grid-column:1/-1}}
 @media(max-width:900px){.catalog-toolbar{grid-template-columns:1fr}.profile-dl{grid-template-columns:1fr}.quick-actions{grid-template-columns:1fr}}
 @media(max-width:600px){.grid4,.grid3,.grid2{grid-template-columns:1fr}.section{padding:68px 0}.toolbar{flex-direction:column}.button{min-height:48px}.page-hero{padding-top:52px}.page-hero h1{font-size:clamp(2.6rem,14vw,4rem)}}
+/* Keep stacked dashboard panels compressible when they contain wide tables. */
+.section-stack{grid-template-columns:minmax(0,1fr);min-width:0}
+.section-stack>*{min-width:0;max-width:100%}

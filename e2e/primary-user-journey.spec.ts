@@ -277,7 +277,7 @@ test("skip-link, hamburger et Échap", async ({ page }, testInfo) => {
   await expect(page.locator("#mobile-navigation")).toHaveCount(0);
 });
 
-test("dashboard sans overflow 1280/834/390", async ({ page }, testInfo) => {
+test("dashboard et abonnement avec tableaux sans overflow 1280/834/390", async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== "desktop", "Les trois largeurs QA sont exercées sur le projet desktop.");
   test.skip(!process.env.DATABASE_URL, "PostgreSQL jetable requis pour le compte TEST dashboard.");
   const accountEmail = `overflow-${randomUUID()}@example.test`;
@@ -301,9 +301,37 @@ test("dashboard sans overflow 1280/834/390", async ({ page }, testInfo) => {
         },
       },
     },
+    include: { subscriptions: true },
   });
 
   try {
+    const subscription = user.subscriptions[0];
+    await Promise.all([
+      db.invoice.create({
+        data: {
+          subscriptionId: subscription.id,
+          provider: "STRIPE",
+          providerRef: `overflow-invoice-${randomUUID()}`,
+          number: "TEST-INVOICE-MOBILE-OVERFLOW-REGRESSION-002",
+          amountDueCents: 200,
+          amountPaidCents: 200,
+          currency: "USD",
+          status: "paid",
+        },
+      }),
+      db.payment.create({
+        data: {
+          userId: user.id,
+          subscriptionId: subscription.id,
+          provider: "STRIPE",
+          providerRef: `overflow-payment-${randomUUID()}`,
+          amountCents: 200,
+          currency: "USD",
+          status: "succeeded",
+        },
+      }),
+    ]);
+
     await page.goto("/login");
     await page.getByLabel("Adresse e-mail").fill(accountEmail);
     await page.locator('input[name="password"]').fill(accountPassword);
@@ -316,9 +344,24 @@ test("dashboard sans overflow 1280/834/390", async ({ page }, testInfo) => {
         await page.goto(route, { waitUntil: "domcontentloaded" });
         await expect(page.getByRole("navigation", { name: "Navigation de l’espace" }).getByRole("link")).toHaveCount(9);
         await assertNoHorizontalOverflow(page, `${route} @ ${viewport.width}px`);
+        if (route === "/dashboard/subscription" && viewport.width === 390) {
+          await expect(page.getByRole("heading", { name: "Factures récentes" })).toBeVisible();
+          await expect(page.getByRole("link", { name: "Historique complet" })).toBeVisible();
+          const tableWraps = page.locator(".admin-table-wrap");
+          await expect(tableWraps).toHaveCount(3);
+          await expect(tableWraps.locator("table")).toHaveCount(3);
+          const responsiveTables = await tableWraps.evaluateAll((wrappers) => wrappers.every((wrapper) => {
+            const style = window.getComputedStyle(wrapper);
+            return wrapper.clientWidth <= window.innerWidth
+              && wrapper.scrollWidth >= wrapper.clientWidth
+              && ["auto", "scroll"].includes(style.overflowX);
+          }));
+          expect(responsiveTables, "les tableaux restent accessibles dans leurs conteneurs défilants").toBe(true);
+        }
       }
     }
   } finally {
+    await db.payment.deleteMany({ where: { userId: user.id } });
     await db.user.delete({ where: { id: user.id } });
   }
 });
