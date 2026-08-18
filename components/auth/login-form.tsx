@@ -44,7 +44,7 @@ export function LoginForm({ callbackUrl, verified }: { callbackUrl: string; veri
     >
       {verified && <p role="status" className="form-success">Adresse vérifiée. Vous pouvez vous connecter.</p>}
       {error && <p id="login-error" role="alert" className="form-error">{error}</p>}
-      <form onSubmit={submit} className="auth-form">
+      <form method="post" action="/login" onSubmit={submit} className="auth-form" autoComplete="on">
         <Field id="email" label="Adresse e-mail">
           <div className="field-with-icon">
             <Mail size={17} />

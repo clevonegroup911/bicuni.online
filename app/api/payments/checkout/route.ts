@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { createHash } from "node:crypto";
 import { z } from "zod";
 import { auth } from "@/auth";
 import { db } from "@/lib/db/client";
@@ -18,6 +19,12 @@ export async function POST(request: Request) {
   if (!plan?.active) return NextResponse.json({ error: "Ce plan n’est pas disponible." }, { status: 404 });
 
   const origin = publicOrigin(request);
+  const suppliedKey = request.headers.get("idempotency-key")?.trim();
+  if (suppliedKey && !/^[a-zA-Z0-9:_-]{8,128}$/.test(suppliedKey)) {
+    return NextResponse.json({ error: "Clé d’idempotence invalide." }, { status: 400 });
+  }
+  const requestKey = suppliedKey ?? `window:${Math.floor(Date.now() / 300_000)}`;
+  const idempotencyKey = createHash("sha256").update(`checkout:${session.user.id}:${plan.id}:${requestKey}`).digest("hex");
   const checkout = await paymentGateway("STRIPE").createSubscriptionCheckout({
     userId: session.user.id,
     customerEmail: session.user.email,
@@ -29,6 +36,7 @@ export async function POST(request: Request) {
     interval: plan.interval,
     successUrl: `${origin}/dashboard?checkout=success`,
     cancelUrl: `${origin}/pricing?checkout=canceled`,
+    idempotencyKey,
   });
   return NextResponse.json(checkout);
 }

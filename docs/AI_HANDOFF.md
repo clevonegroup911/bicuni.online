@@ -1,5 +1,72 @@
 # BICUNI AI Handoff
 
+## BIC-SEC-002 — contrats back-end Sprint 002
+
+- `GET /api/profile` retourne `{ profile }` pour l’utilisateur authentifié.
+- `PATCH /api/profile` accepte uniquement `name`, `image`, `bio`, `title`, `country`, `orcid`, `website`, `researchFields`, `universityId`, `departmentId`, avec permission `profile:write`. Les champs inconnus (notamment rôle, statut, email ou userId) donnent `400`. Un département doit appartenir à l’institution active fournie.
+- `POST /api/payments/portal` retourne `{ url }` pour le customer Stripe appartenant à la session; retour fixe vers `/dashboard/subscription`.
+- `POST /api/subscriptions/cancel` exige `{ atPeriodEnd: true }`, programme `cancel_at_period_end`; l’appel est idempotent et ne permet pas de choisir l’abonnement d’un autre utilisateur.
+- `GET /api/invoices?page=N&limit=1..50` retourne `{ invoices, pagination }`, filtré exclusivement via les abonnements de la session.
+- `POST /api/payments/checkout` accepte toujours `{ planSlug }`; l’en-tête facultatif `Idempotency-Key` (8–128 caractères alphanumériques, `:`, `_`, `-`) stabilise les doubles soumissions. Le plan et le montant restent chargés côté serveur.
+- `POST /api/auth/resend-verification` accepte `{ email }` et répond toujours de façon neutre; il renouvelle le jeton seulement pour un compte réellement en attente.
+- Coupons/remboursements: contrat métier à valider avant modèle ou migration; proposition dans `docs/production-readiness.md`.
+
+## BIC-UI-002 — profil, abonnement, facturation (15 août 2026)
+
+**TASK_ID :** BIC-UI-002
+**Branche :** `ai/cursor/BIC-UI-002`
+**Worktree :** `~/Projects/bicuni.cursor.sprint-002`
+**Statut :** READY_FOR_REVIEW
+**Commit / push / merge / déploiement :** NON
+
+Parcours UI finalisés sans toucher Prisma, Auth, JWT, middleware, webhooks Stripe, rate limiting, CSP ni e-mail serveur. Aucune sauvegarde, paiement, coupon ou remboursement n’est simulé.
+
+### Pages terminées
+
+- `/dashboard/profile` — édition (nom, titre, bio, pays, ORCID, site, domaines, université, faculté UI, département, URL d’avatar)
+- `/dashboard/subscription` — plan, statut, tarif, devise, périodicité, échéance, annulation programmée, historique, portail Stripe, confirmation d’annulation
+- `/dashboard/invoices` — liste paginée réelle (date, numéro, montant, devise, statut, PDF/hostedUrl)
+- `/admin/invoices` — liste paginée BO (`admin:audit:read`), données `Invoice` Prisma existantes
+
+### Pages partielles / non opérationnelles
+
+- `/admin/coupons` et `/admin/refunds` — état **non configuré** (pas de modèle Prisma). Composants réutilisables prêts (`CouponBoard`, `CouponForm`, `RefundBoard`, `RefundRequestForm`).
+- Enregistrement profil, portail Stripe et annulation : l’UI appelle les API réelles ; si Codex ne les a pas encore livrées, l’écran affiche l’indisponibilité (404/405/501) sans succès fictif.
+
+### Contrats API attendus de Codex
+
+1. **`PATCH /api/profile`**
+   - Auth session ACTIVE, propriétaire, permission `profile:write` déjà au RBAC.
+   - Corps : `{ name, title, bio, country, orcid, website, image, researchFields, universityId, departmentId }` (champs Prisma existants uniquement).
+   - **Pas de `facultyId`** : la faculté se déduit de `Department.faculty`. Valider `department.faculty.universityId === universityId`.
+   - `image` : URL http(s) ou chemin relatif, **pas d’upload GCS** (stockage actuel = documents privés).
+   - Réponses : 200 profil persisté ; 400/409 validation (ORCID unique) ; 401 session ; 403 interdit.
+   - Fichier de contrat : `lib/profile/contract.ts`.
+
+2. **`POST /api/payments/portal`**
+   - Auth session. Corps `{ returnUrl? }`. Succès **uniquement** `{ url }` Stripe Billing Portal.
+   - 503 si `STRIPE_SECRET_KEY` absente ; 404 si pas de `stripeCustomerId`.
+   - L’UI n’invente jamais l’URL. Contrat : `lib/billing/contracts.ts` (`STRIPE_PORTAL_CONTRACT`).
+
+3. **`POST /api/subscriptions/cancel`**
+   - Corps `{ atPeriodEnd: true }`. Annulation en fin de période uniquement, via Stripe puis `cancelAtPeriodEnd`.
+   - Pas d’annulation immédiate ni de remboursement depuis l’UI. Contrat : `SUBSCRIPTION_CANCEL_CONTRACT`.
+
+4. **Coupons / remboursements** — schéma + routes listés dans `COUPON_API_CONTRACT` et `REFUND_API_CONTRACT`. Tant que les modèles n’existent pas, ne pas activer `configured: true`.
+
+### Décisions UI
+
+- Avatar : affichage de `User.image` s’il s’agit d’une URL sûre ; pas de sélecteur de fichier (GCS documentaire privé).
+- Stripe non configuré : bandeau explicite, boutons portail/annulation masqués.
+- Factures : uniquement les lignes `Invoice` / webhooks ; état vide réel si aucune.
+- Navigation : Factures dans la sidebar utilisateur ; Factures / Coupons / Remboursements dans la nav BO filtrée par `admin:audit:read`.
+
+### Passage à Codex
+
+Implémenter `PATCH /api/profile`, `POST /api/payments/portal` et `POST /api/subscriptions/cancel` selon les contrats ci-dessus, sans modifier les pages Cursor. Ne pas créer de coupons/remboursements fictifs. Vérifier que les 401 du profil redirigent bien via l’UI existante (`/login?next=/dashboard/profile`).
+
+---
+
 ## BIC-UI-001-FREEZE — gel Cursor du 15 août 2026
 
 **TASK_ID :** BIC-UI-001-FREEZE

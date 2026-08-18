@@ -52,7 +52,7 @@ export class StripeGateway implements PaymentGateway {
       },
       success_url: input.successUrl,
       cancel_url: input.cancelUrl,
-    });
+    }, { idempotencyKey: input.idempotencyKey });
     if (!session.url) throw new Error("Stripe n’a pas retourné d’URL Checkout.");
     return { url: session.url };
   }

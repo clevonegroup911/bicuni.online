@@ -31,7 +31,7 @@
 .admin-row>span{display:grid}
 .admin-row small,.admin-row time{color:var(--muted);font-size:11px}
 .admin-filters{display:grid;grid-template-columns:2fr 1fr 1fr auto;gap:10px;margin-bottom:15px}
-.admin-table-wrap{overflow:auto}
+.admin-table-wrap{width:100%;max-width:100%;min-width:0;overflow-x:auto;-webkit-overflow-scrolling:touch}
 .admin-table{width:100%;border-collapse:collapse}
 .admin-table th,.admin-table td{padding:13px;text-align:left;border-bottom:1px solid var(--line);font-size:12px}
 .admin-table td:first-child{display:grid}

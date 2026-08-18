@@ -20,10 +20,6 @@ export function Header({ user }: { user?: { name: string | null; isAdmin: boolea
   const pathname = usePathname();
 
   useEffect(() => {
-    setOpen(false);
-  }, [pathname]);
-
-  useEffect(() => {
     if (!open) return;
     const onKey = (event: KeyboardEvent) => {
       if (event.key === "Escape") setOpen(false);
@@ -82,7 +78,7 @@ export function Header({ user }: { user?: { name: string | null; isAdmin: boolea
           <button
             className="mobile-toggle icon-button"
             onClick={() => setOpen(!open)}
-            aria-expanded={open}
+            aria-expanded={open ? "true" : "false"}
             aria-controls="mobile-navigation"
             aria-label={open ? "Fermer le menu principal" : "Ouvrir le menu principal"}
             type="button"
@@ -92,7 +88,7 @@ export function Header({ user }: { user?: { name: string | null; isAdmin: boolea
         </div>
       </div>
       {open ? (
-        <nav id="mobile-navigation" className="mobile-nav shell" aria-label="Navigation mobile">
+        <nav id="mobile-navigation" className="mobile-nav shell" aria-label="Navigation mobile" onClick={() => setOpen(false)}>
           {publicLinks.map(([label, href]) => (
             <Link key={href} href={href} aria-current={navCurrent(href)}>{label}</Link>
           ))}

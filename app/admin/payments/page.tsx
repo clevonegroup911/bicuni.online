@@ -1,4 +1,5 @@
 import { WalletCards } from "lucide-react";
+import Link from "next/link";
 import { AdminShell } from "@/components/admin/admin-shell";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Pagination, buildPageHref } from "@/components/ui/pagination";
@@ -73,7 +74,10 @@ export default async function AdminPaymentsPage({
         <Pagination page={page} total={total} pageSize={pageSize} hrefForPage={(next) => buildPageHref("/admin/payments", {}, next)} />
 
         <section className="glass card admin-panel" style={{ marginTop: 18 }}>
-          <h2>Factures récentes</h2>
+          <div className="panel-head">
+            <h2>Factures récentes</h2>
+            <Link className="auth-link" href="/admin/invoices">Toutes les factures</Link>
+          </div>
           {invoices.length ? invoices.map((invoice) => (
             <div className="admin-row" key={invoice.id}>
               <span>

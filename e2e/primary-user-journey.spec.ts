@@ -1,4 +1,5 @@
 import { createHash, randomUUID } from "node:crypto";
+import { hash } from "bcryptjs";
 import { PrismaClient } from "@prisma/client";
 import { expect, test } from "@playwright/test";
 
@@ -7,9 +8,13 @@ const email = `e2e-${randomUUID()}@example.test`;
 const password = "Bicuni-Test-2026";
 
 test.afterAll(async () => {
-  const user = await db.user.findUnique({ where: { email }, select: { id: true } });
-  if (user) await db.user.delete({ where: { id: user.id } });
-  await db.$disconnect();
+  if (!process.env.DATABASE_URL) return;
+  try {
+    const user = await db.user.findUnique({ where: { email }, select: { id: true } });
+    if (user) await db.user.delete({ where: { id: user.id } });
+  } finally {
+    await db.$disconnect();
+  }
 });
 
 test("inscription, vérification, connexion, session et déconnexion", async ({ page }, testInfo) => {
@@ -65,7 +70,7 @@ test("inscription, vérification, connexion, session et déconnexion", async ({ 
 test("pages publiques sans overflow horizontal", async ({ page }) => {
   for (const route of ["/", "/search", "/documents", "/library", "/universities", "/pricing", "/login", "/signup"]) {
     await page.goto(route, { waitUntil: "domcontentloaded" });
-    const overflow = await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth);
+    const overflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth);
     expect(overflow, `${route} ne doit pas déborder horizontalement`).toBe(false);
   }
 });
@@ -102,5 +107,261 @@ test("mot de passe oublié, réinitialisation, utilisateur non vérifié et sess
     await expect(page).toHaveURL(/\/login\?next=/);
   } finally {
     await db.user.deleteMany({ where: { email: authEmail } });
+  }
+});
+
+test("profil, facture propriétaire et services Stripe absents sans faux succès", async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== "desktop", "Le contrat compte Sprint 002 ne doit être exécuté qu’une fois.");
+  const accountEmail = `account-${randomUUID()}@example.test`;
+  const accountPassword = "Bicuni-Account-2026";
+  const providerRef = `in_test_${randomUUID()}`;
+  const plan = await db.plan.findUniqueOrThrow({ where: { slug: "starter" } });
+  const user = await db.user.create({
+    data: {
+      email: accountEmail,
+      name: "Compte E2E",
+      passwordHash: await hash(accountPassword, 12),
+      emailVerified: new Date(),
+      status: "ACTIVE",
+      role: "STUDENT",
+      subscriptions: {
+        create: {
+          planId: plan.id,
+          provider: "STRIPE",
+          providerRef: `sub_test_${randomUUID()}`,
+          status: "ACTIVE",
+          currentPeriodEnd: new Date(Date.now() + 86_400_000),
+          invoices: {
+            create: {
+              provider: "STRIPE",
+              providerRef,
+              number: "TEST-INV-002",
+              amountDueCents: 200,
+              amountPaidCents: 200,
+              currency: "USD",
+              status: "paid",
+            },
+          },
+        },
+      },
+    },
+  });
+
+  try {
+    await page.goto("/login");
+    await page.getByLabel("Adresse e-mail").fill(accountEmail);
+    await page.locator('input[name="password"]').fill(accountPassword);
+    await page.getByRole("button", { name: "Se connecter" }).click();
+    await expect(page).toHaveURL(/\/dashboard$/, { timeout: 30_000 });
+
+    await page.goto("/dashboard/profile");
+    await page.getByLabel("Nom").fill("Compte E2E intégré");
+    await page.getByLabel("Titre académique").fill("Chercheur test");
+    await page.getByLabel("Biographie").fill("Profil de test d’intégration explicitement marqué E2E.");
+    await page.getByLabel("Pays").fill("CD");
+    await page.getByLabel("Site").fill("https://example.test/profile");
+    await page.getByLabel("Avatar (URL)").fill("https://example.test/avatar.png");
+    await page.getByLabel("Domaines de recherche").fill("sécurité, intégration");
+    await page.getByRole("button", { name: "Enregistrer le profil" }).click();
+    await expect(page.getByRole("status")).toContainText("Profil enregistré", { timeout: 30_000 });
+    await expect(db.user.findUniqueOrThrow({ where: { id: user.id }, include: { profile: true } })).resolves.toMatchObject({
+      name: "Compte E2E intégré",
+      image: "https://example.test/avatar.png",
+      profile: { title: "Chercheur test", researchFields: ["sécurité", "intégration"] },
+    });
+
+    const result = await page.evaluate(async (expectedNumber) => {
+      const invoices = await fetch("/api/invoices?page=1&limit=10");
+      const invoicePayload = await invoices.json();
+      const portal = await fetch("/api/payments/portal", { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
+      const cancellation = await fetch("/api/subscriptions/cancel", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ atPeriodEnd: true }),
+      });
+      return {
+        invoiceStatus: invoices.status,
+        ownsInvoice: invoicePayload.invoices?.some((invoice: { number?: string }) => invoice.number === expectedNumber) ?? false,
+        pagination: invoicePayload.pagination,
+        portalStatus: portal.status,
+        cancellationStatus: cancellation.status,
+      };
+    }, "TEST-INV-002");
+    expect(result).toMatchObject({
+      invoiceStatus: 200,
+      ownsInvoice: true,
+      pagination: { page: 1, limit: 10, total: 1, pages: 1 },
+      portalStatus: 503,
+      cancellationStatus: 503,
+    });
+  } finally {
+    await db.user.delete({ where: { id: user.id } });
+  }
+});
+
+const QA_VIEWPORTS = [
+  { width: 1280, height: 800 },
+  { width: 834, height: 1194 },
+  { width: 390, height: 844 },
+] as const;
+
+async function assertNoHorizontalOverflow(page: { evaluate: (fn: () => boolean) => Promise<boolean> }, label: string) {
+  const overflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth);
+  expect(overflow, `${label} ne doit pas déborder horizontalement`).toBe(false);
+}
+
+test("formulaires Auth en POST et hydratation / et /login", async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== "desktop", "Le contrôle d’hydratation et des attributs de formulaire se fait une fois.");
+  const hydrationErrors: string[] = [];
+  page.on("console", (message) => {
+    if (message.type() !== "error") return;
+    const text = message.text();
+    if (!/hydrat/i.test(text)) return;
+    if (text.includes("next-devtools") || text.includes("SegmentViewNode")) return;
+    hydrationErrors.push(text);
+  });
+
+  for (const route of ["/", "/login", "/signup", "/forgot-password", "/admin/login"]) {
+    await page.goto(route, { waitUntil: "networkidle" });
+    if (route !== "/") {
+      const form = page.locator("form.auth-form");
+      await expect(form).toHaveAttribute("method", /post/i);
+      await expect(form).toHaveAttribute("action", route);
+    }
+  }
+
+  expect(hydrationErrors, hydrationErrors.join("\n")).toEqual([]);
+});
+
+test("soumission native sans secret dans l’URL", async ({ request, baseURL }, testInfo) => {
+  test.skip(testInfo.project.name !== "desktop", "Le contrôle d’URL native se fait une fois.");
+  const pageHtml = await (await request.get("/login")).text();
+  expect(pageHtml).toMatch(/<form[^>]*method="post"/i);
+  expect(pageHtml).toMatch(/action="\/login"/);
+
+  const response = await request.post(`${baseURL}/login`, {
+    form: {
+      email: "qa-secret@example.test",
+      password: "SuperSecret-Login-2026",
+    },
+    failOnStatusCode: false,
+    maxRedirects: 0,
+  });
+  const finalUrl = response.url();
+  const location = response.headers().location ?? "";
+  expect(finalUrl).not.toContain("password=");
+  expect(finalUrl).not.toContain("SuperSecret-Login-2026");
+  expect(finalUrl).not.toContain("qa-secret@example.test");
+  expect(location).not.toContain("password=");
+  expect(location).not.toContain("SuperSecret-Login-2026");
+  expect(location).not.toContain("qa-secret@example.test");
+});
+
+test("skip-link, hamburger et Échap", async ({ page }, testInfo) => {
+  await page.goto("/login", { waitUntil: "domcontentloaded" });
+  await page.keyboard.press("Tab");
+  await expect(page.locator(".skip-link")).toBeFocused();
+
+  if (testInfo.project.name === "desktop") return;
+
+  const toggle = page.locator('button[aria-controls="mobile-navigation"]');
+  await expect(toggle).toBeVisible();
+  await toggle.click();
+  await expect(toggle).toHaveAttribute("aria-expanded", "true");
+  await expect(toggle).toHaveAttribute("aria-label", "Fermer le menu principal");
+  await expect(page.locator("#mobile-navigation")).toBeVisible();
+  await expect(page.locator("#mobile-navigation a").first()).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(toggle).toHaveAttribute("aria-expanded", "false");
+  await expect(toggle).toHaveAttribute("aria-label", "Ouvrir le menu principal");
+  await expect(page.locator("#mobile-navigation")).toHaveCount(0);
+});
+
+test("dashboard et abonnement avec tableaux sans overflow 1280/834/390", async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== "desktop", "Les trois largeurs QA sont exercées sur le projet desktop.");
+  test.skip(!process.env.DATABASE_URL, "PostgreSQL jetable requis pour le compte TEST dashboard.");
+  const accountEmail = `overflow-${randomUUID()}@example.test`;
+  const accountPassword = "Bicuni-Overflow-2026";
+  const plan = await db.plan.findUniqueOrThrow({ where: { slug: "starter" } });
+  const user = await db.user.create({
+    data: {
+      email: accountEmail,
+      name: "Compte Overflow E2E",
+      passwordHash: await hash(accountPassword, 12),
+      emailVerified: new Date(),
+      status: "ACTIVE",
+      role: "STUDENT",
+      subscriptions: {
+        create: {
+          planId: plan.id,
+          provider: "STRIPE",
+          providerRef: `overflow-test-${randomUUID()}`,
+          status: "ACTIVE",
+          currentPeriodEnd: new Date(Date.now() + 86_400_000),
+        },
+      },
+    },
+    include: { subscriptions: true },
+  });
+
+  try {
+    const subscription = user.subscriptions[0];
+    await Promise.all([
+      db.invoice.create({
+        data: {
+          subscriptionId: subscription.id,
+          provider: "STRIPE",
+          providerRef: `overflow-invoice-${randomUUID()}`,
+          number: "TEST-INVOICE-MOBILE-OVERFLOW-REGRESSION-002",
+          amountDueCents: 200,
+          amountPaidCents: 200,
+          currency: "USD",
+          status: "paid",
+        },
+      }),
+      db.payment.create({
+        data: {
+          userId: user.id,
+          subscriptionId: subscription.id,
+          provider: "STRIPE",
+          providerRef: `overflow-payment-${randomUUID()}`,
+          amountCents: 200,
+          currency: "USD",
+          status: "succeeded",
+        },
+      }),
+    ]);
+
+    await page.goto("/login");
+    await page.getByLabel("Adresse e-mail").fill(accountEmail);
+    await page.locator('input[name="password"]').fill(accountPassword);
+    await page.getByRole("button", { name: "Se connecter" }).click();
+    await expect(page).toHaveURL(/\/dashboard$/, { timeout: 30_000 });
+
+    for (const viewport of QA_VIEWPORTS) {
+      await page.setViewportSize(viewport);
+      for (const route of ["/dashboard", "/dashboard/profile", "/dashboard/subscription", "/dashboard/invoices"]) {
+        await page.goto(route, { waitUntil: "domcontentloaded" });
+        await expect(page.getByRole("navigation", { name: "Navigation de l’espace" }).getByRole("link")).toHaveCount(9);
+        await assertNoHorizontalOverflow(page, `${route} @ ${viewport.width}px`);
+        if (route === "/dashboard/subscription" && viewport.width === 390) {
+          await expect(page.getByRole("heading", { name: "Factures récentes" })).toBeVisible();
+          await expect(page.getByRole("link", { name: "Historique complet" })).toBeVisible();
+          const tableWraps = page.locator(".admin-table-wrap");
+          await expect(tableWraps).toHaveCount(3);
+          await expect(tableWraps.locator("table")).toHaveCount(3);
+          const responsiveTables = await tableWraps.evaluateAll((wrappers) => wrappers.every((wrapper) => {
+            const style = window.getComputedStyle(wrapper);
+            return wrapper.clientWidth <= window.innerWidth
+              && wrapper.scrollWidth >= wrapper.clientWidth
+              && ["auto", "scroll"].includes(style.overflowX);
+          }));
+          expect(responsiveTables, "les tableaux restent accessibles dans leurs conteneurs défilants").toBe(true);
+        }
+      }
+    }
+  } finally {
+    await db.payment.deleteMany({ where: { userId: user.id } });
+    await db.user.delete({ where: { id: user.id } });
   }
 });

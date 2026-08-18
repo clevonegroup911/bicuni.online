@@ -47,7 +47,7 @@ export function RegisterForm() {
           <Link href="/login" className="button secondary">Se connecter</Link>
         </>
       ) : (
-        <form onSubmit={submit} className="auth-form">
+        <form method="post" action="/signup" onSubmit={submit} className="auth-form" autoComplete="on">
           {error && <p id="register-error" role="alert" className="form-error">{error}</p>}
           <Field id="name" label="Nom complet">
             <input id="name" name="name" className="input" autoComplete="name" required minLength={2} />
@@ -63,7 +63,7 @@ export function RegisterForm() {
               </button>
             </div>
           </Field>
-          <button className="button" disabled={pending} aria-busy={pending}>{pending ? "Création…" : "Créer mon compte"}</button>
+          <button className="button" type="submit" disabled={pending} aria-busy={pending}>{pending ? "Création…" : "Créer mon compte"}</button>
         </form>
       )}
     </AuthShell>
