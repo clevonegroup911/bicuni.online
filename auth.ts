@@ -7,6 +7,7 @@ import { createHash } from "node:crypto";
 import { db } from "@/lib/db/client";
 import { auditRequestContext } from "@/lib/admin/context";
 import { consumeAuthAttempt, RateLimitUnavailableError, requestIdentity } from "@/lib/auth/rate-limit";
+import { AuthRateLimitedError, AuthTemporarilyUnavailableError } from "@/lib/auth/credentials-errors";
 import { credentialsSchema } from "@/lib/auth/validators";
 import { logger } from "@/lib/observability/logger";
 
@@ -38,7 +39,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           const parsed = credentialsSchema.safeParse(rawCredentials);
           if (!parsed.success) return null;
           const emailHash = createHash("sha256").update(parsed.data.email).digest("hex");
-          if (!await consumeAuthAttempt(`credentials:${requestIdentity(request)}:${emailHash}`, 8)) return null;
+          if (!await consumeAuthAttempt(`credentials:${requestIdentity(request)}:${emailHash}`, 8)) {
+            throw new AuthRateLimitedError();
+          }
           const user = await db.user.findUnique({ where: { email: parsed.data.email } });
           if (!user?.passwordHash || !user.emailVerified || user.status !== "ACTIVE") {
             await db.auditLog.create({ data: { actorId: user?.id, action: "AUTH_SIGN_IN_FAILED", entityType: "User", entityId: user?.id, ...auditRequestContext(request) } });
@@ -51,7 +54,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           }
           return { id: user.id, email: user.email, name: user.name, image: user.image, role: user.role, status: user.status };
         } catch (error) {
-          if (error instanceof RateLimitUnavailableError) return null;
+          if (error instanceof RateLimitUnavailableError) throw new AuthTemporarilyUnavailableError();
+          if (error instanceof AuthRateLimitedError) throw error;
           logger.error("auth.credentials.error", error);
           throw error;
         }

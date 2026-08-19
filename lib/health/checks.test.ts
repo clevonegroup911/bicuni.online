@@ -31,6 +31,13 @@ describe("checkRedisReadiness", () => {
       throw new Error("redis://secret@redis.example:6379/0");
     })).resolves.toBe(false);
   });
+
+  it("supporte des sondes répétées et concurrentes sans état partagé divergent", async () => {
+    const ping = vi.fn(async () => "PONG");
+    const results = await Promise.all(Array.from({ length: 12 }, () => checkRedisReadiness(ping, 200)));
+    expect(results).toEqual(Array(12).fill(true));
+    expect(ping).toHaveBeenCalledTimes(12);
+  });
 });
 
 describe("readinessReport", () => {

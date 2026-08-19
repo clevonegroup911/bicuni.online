@@ -1,4 +1,4 @@
-import { createClient } from "redis";
+import { sharedRedisClient } from "@/lib/redis/client";
 
 const DEFAULT_TIMEOUT_MS = 2_000;
 
@@ -56,16 +56,9 @@ export async function checkRedisReadiness(
 }
 
 async function pingConfiguredRedis() {
-  const url = process.env.REDIS_URL?.trim();
-  if (!url) throw new Error("REDIS_URL is not configured.");
-  const connectTimeout = Number(process.env.REDIS_CONNECT_TIMEOUT_MS) || 750;
-  const client = createClient({ url, socket: { connectTimeout, reconnectStrategy: false } });
-  try {
-    await client.connect();
-    await client.ping();
-  } finally {
-    await client.quit().catch(() => undefined);
-  }
+  const client = await sharedRedisClient();
+  if (!client) throw new Error("REDIS_URL is not configured.");
+  await client.ping();
 }
 
 export function redisRequiredForReadiness(environment: string | undefined = process.env.NODE_ENV) {

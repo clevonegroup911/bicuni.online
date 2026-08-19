@@ -3,6 +3,7 @@
 import { signIn, signOut } from "next-auth/react";
 import { FormEvent, useState } from "react";
 import { Field } from "@/components/ui/field";
+import { signInFailureMessage } from "@/lib/auth/sign-in-feedback";
 
 const adminRoles = new Set(["SUPER_ADMIN", "ADMIN", "MODERATOR", "INSTITUTION_ADMIN", "UNIVERSITY_ADMIN"]);
 
@@ -22,7 +23,7 @@ export function AdminLoginForm() {
         redirect: false,
       });
       if (result?.error) {
-        setError("Identifiants invalides ou accès administratif indisponible.");
+        setError(signInFailureMessage(result.code, true));
         setPending(false);
         return;
       }

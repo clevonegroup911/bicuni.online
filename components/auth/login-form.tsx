@@ -6,6 +6,7 @@ import { signIn } from "next-auth/react";
 import { FormEvent, useState } from "react";
 import { AuthShell } from "@/components/auth/auth-shell";
 import { Field } from "@/components/ui/field";
+import { signInFailureMessage } from "@/lib/auth/sign-in-feedback";
 
 export function LoginForm({ callbackUrl, verified }: { callbackUrl: string; verified: boolean }) {
   const [show, setShow] = useState(false);
@@ -24,7 +25,7 @@ export function LoginForm({ callbackUrl, verified }: { callbackUrl: string; veri
         redirect: false,
       });
       if (result?.error) {
-        setError("Identifiants invalides ou adresse email non vérifiée.");
+        setError(signInFailureMessage(result.code));
         setPending(false);
         return;
       }

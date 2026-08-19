@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { NextResponse } from "next/server";
-import { createClient, type RedisClientType } from "redis";
 import { logger } from "@/lib/observability/logger";
+import { sharedRedisClient } from "@/lib/redis/client";
 
 export class RateLimitUnavailableError extends Error {
   readonly status = 503 as const;
@@ -13,31 +13,7 @@ export class RateLimitUnavailableError extends Error {
 
 type Entry = { count: number; resetAt: number };
 const store = new Map<string, Entry>();
-let redis: RedisClientType | undefined;
-let connecting: Promise<RedisClientType> | undefined;
-
 export type TrustedProxyStrategy = "cloud-run" | "loopback";
-
-async function redisConnection() {
-  if (!process.env.REDIS_URL) return null;
-  if (redis?.isOpen) return redis;
-  connecting ??= (async () => {
-    const connectTimeout = positiveInteger(process.env.REDIS_CONNECT_TIMEOUT_MS, 750);
-    const instance = createClient({
-      url: process.env.REDIS_URL,
-      socket: { connectTimeout, reconnectStrategy: (retries) => retries >= 2 ? false : Math.min(100 * 2 ** retries, 500) },
-    });
-    instance.on("error", (error) => logger.error("redis.rate_limit_error", error));
-    await instance.connect();
-    redis = instance as RedisClientType;
-    return redis;
-  })().catch((error) => {
-    connecting = undefined;
-    logger.error("redis.rate_limit_connection_error", error);
-    throw error;
-  });
-  return connecting;
-}
 
 function positiveInteger(value: string | undefined, fallback: number) {
   const parsed = Number(value);
@@ -67,7 +43,7 @@ export function distributedRateLimitRequired(environment = process.env.NODE_ENV)
 }
 
 export async function consumeAuthAttempt(key: string, limit = 8, windowMs = 15 * 60_000) {
-  const client = await redisConnection().catch(() => null);
+  const client = await sharedRedisClient().catch(() => null);
   if (client) {
     try {
       const redisKey = rateLimitRedisKey(key);
