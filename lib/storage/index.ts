@@ -6,6 +6,11 @@ export type StoredObjectDigest = {
   sizeBytes?: number;
   contentType?: string;
   checksum?: string;
+  reference?: {
+    bucket: string;
+    objectKey: string;
+    generation?: string;
+  };
 };
 
 export interface StorageProvider {
@@ -91,6 +96,11 @@ class GoogleCloudStorageProvider implements StorageProvider {
       sizeBytes,
       contentType: metadata.contentType,
       checksum: hash.digest("hex"),
+      reference: {
+        bucket: this.bucketName,
+        objectKey,
+        generation: typeof metadata.generation === "string" ? metadata.generation : undefined,
+      },
     };
   }
 

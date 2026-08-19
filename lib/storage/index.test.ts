@@ -39,6 +39,11 @@ describe("privateStorage", () => {
       sizeBytes: 4,
       contentType: "application/pdf",
       checksum: "8b3369944dd2a3fab39e32d1aeb1f763946a458ae3e6368a46432adc8f3a0860",
+      reference: {
+        bucket: "test-only-bucket",
+        objectKey: "users/test/document.pdf",
+        generation: undefined,
+      },
     });
   });
 

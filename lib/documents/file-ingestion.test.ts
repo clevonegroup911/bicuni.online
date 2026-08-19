@@ -34,6 +34,7 @@ function digest(overrides: Record<string, unknown> = {}) {
     sizeBytes: 4,
     contentType: "application/pdf",
     checksum: file.checksum,
+    reference: { bucket: "test-only-bucket", objectKey: file.objectKey, generation: "42" },
     ...overrides,
   };
 }

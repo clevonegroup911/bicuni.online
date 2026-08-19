@@ -38,7 +38,7 @@ export async function confirmStoredDocumentFile(input: {
 
   const storage = deps.storage ?? privateStorage();
   const digest = await storage.digest(file.objectKey);
-  if (!digest.exists || digest.sizeBytes == null || !digest.checksum) {
+  if (!digest.exists || digest.sizeBytes == null || !digest.checksum || !digest.reference) {
     throw new FileIngestionError("Le fichier stocké est introuvable.", 422);
   }
   if (digest.contentType && digest.contentType !== file.mimeType) {
@@ -67,7 +67,9 @@ export async function confirmStoredDocumentFile(input: {
 
   const scanner = deps.scanner ?? antivirusScanner();
   const scan = await scanner.scan({
-    objectKey: file.objectKey,
+    bucket: digest.reference.bucket,
+    objectKey: digest.reference.objectKey,
+    generation: digest.reference.generation,
     checksum: digest.checksum,
     sizeBytes: digest.sizeBytes,
     mimeType: file.mimeType,
