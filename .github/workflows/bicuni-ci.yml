@@ -118,6 +118,29 @@ jobs:
           push: false
           tags: bicuni-ci:${{ github.sha }}
 
+      - name: Smoke web image with Prisma and healthchecks
+        run: |
+          image="bicuni-ci:${{ github.sha }}"
+          docker run --rm \
+            -e DATABASE_URL='postgresql://bicuni:static-ci-password@127.0.0.1:5432/bicuni?schema=public' \
+            "$image" \
+            node -e 'const { PrismaClient } = require("@prisma/client"); const client = new PrismaClient(); console.log("Prisma client initialized"); client.$disconnect()'
+          container="bicuni-runner-${{ github.run_id }}"
+          docker run --rm -d --name "$container" -p 127.0.0.1:3100:3000 \
+            -e DATABASE_URL='postgresql://bicuni:static-ci-password@127.0.0.1:5432/bicuni?schema=public' \
+            -e AUTH_SECRET='static-ci-smoke-secret-not-real' \
+            -e PUBLIC_APP_URL='http://127.0.0.1:3100' \
+            "$image"
+          trap 'docker rm -f "$container" >/dev/null 2>&1 || true' EXIT
+          for attempt in $(seq 1 30); do
+            if curl --fail --silent http://127.0.0.1:3100/api/health/live > /tmp/live.json; then break; fi
+            sleep 1
+          done
+          test "$(curl --silent --output /tmp/live.json --write-out '%{http_code}' http://127.0.0.1:3100/api/health/live)" = "200"
+          test "$(curl --silent --output /tmp/ready.json --write-out '%{http_code}' http://127.0.0.1:3100/api/health/ready)" = "503"
+          grep -q '"database":"unavailable"' /tmp/ready.json
+          grep -q '"redis":"unavailable"' /tmp/ready.json
+
       - name: Scan web image (high and critical)
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:

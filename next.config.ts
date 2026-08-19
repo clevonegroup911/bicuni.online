@@ -3,6 +3,13 @@ import { staticSecurityHeaders } from "./lib/security/headers";
 
 const nextConfig: NextConfig = {
   output: "standalone",
+  outputFileTracingIncludes: {
+    "/*": [
+      "./node_modules/.prisma/client/**/*",
+      "./node_modules/@prisma/client/**/*",
+      "./prisma/schema.prisma",
+    ],
+  },
   typedRoutes: false,
   poweredByHeader: false,
   // TypeScript 5.9 exposes the compiler API. Next 16's CLI backend JSON.parse()s
