@@ -47,7 +47,7 @@ export default async function DocumentPage({ params }: { params: Promise<{ id: s
       department: true,
       category: true,
       tags: true,
-      files: { where: { isUploaded: true }, orderBy: { version: "desc" } },
+      files: { where: { isUploaded: true, scanStatus: "CLEAN" }, orderBy: { version: "desc" } },
       publication: true,
       history: { orderBy: { createdAt: "desc" } },
       comments: { where: { deletedAt: null }, include: { author: { select: { name: true } } }, orderBy: { createdAt: "asc" } },

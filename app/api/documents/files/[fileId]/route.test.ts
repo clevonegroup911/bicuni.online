@@ -5,6 +5,8 @@ const mocks = vi.hoisted(() => ({
   fileFindUnique: vi.fn(),
   fileDelete: vi.fn(),
   storageDelete: vi.fn(),
+  signedDownload: vi.fn(),
+  canRead: vi.fn(),
 }));
 
 vi.mock("@/auth", () => ({ auth: mocks.auth }));
@@ -22,15 +24,15 @@ vi.mock("../../../../lib/db/client", () => ({
   },
 }));
 vi.mock("@/lib/storage", () => ({
-  privateStorage: () => ({ delete: mocks.storageDelete, createSignedDownload: vi.fn() }),
+  privateStorage: () => ({ delete: mocks.storageDelete, createSignedDownload: mocks.signedDownload }),
 }));
 vi.mock("../../../../lib/storage", () => ({
-  privateStorage: () => ({ delete: mocks.storageDelete, createSignedDownload: vi.fn() }),
+  privateStorage: () => ({ delete: mocks.storageDelete, createSignedDownload: mocks.signedDownload }),
 }));
-vi.mock("@/lib/documents/scope", () => ({ canReadDocumentSecure: vi.fn() }));
-vi.mock("../../../../lib/documents/scope", () => ({ canReadDocumentSecure: vi.fn() }));
+vi.mock("@/lib/documents/scope", () => ({ canReadDocumentSecure: mocks.canRead }));
+vi.mock("../../../../lib/documents/scope", () => ({ canReadDocumentSecure: mocks.canRead }));
 
-import { DELETE } from "./route";
+import { DELETE, GET } from "./route";
 
 describe("DELETE /api/documents/files/[fileId]", () => {
   beforeEach(() => vi.clearAllMocks());
@@ -50,5 +52,26 @@ describe("DELETE /api/documents/files/[fileId]", () => {
     expect(mocks.fileDelete).not.toHaveBeenCalled();
     expect(mocks.fileFindUnique).not.toHaveBeenCalled();
     expect(mocks.auth).not.toHaveBeenCalled();
+  });
+});
+
+describe("GET /api/documents/files/[fileId]", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it("refuse le téléchargement public d’un fichier non CLEAN", async () => {
+    mocks.auth.mockResolvedValue({ user: { id: "user-1", role: "USER" } });
+    mocks.fileFindUnique.mockResolvedValue({
+      id: "f1",
+      isUploaded: true,
+      scanStatus: "PENDING",
+      objectKey: "users/x/secret.pdf",
+      fileName: "memoire.pdf",
+      document: { id: "d1", authorId: "user-1", status: "PUBLISHED", universityId: "u1", deletedAt: null },
+    });
+    mocks.canRead.mockResolvedValue(true);
+
+    const response = await GET(new Request("https://bicuni.online/api/documents/files/f1"), { params: Promise.resolve({ fileId: "f1" }) });
+    expect(response.status).toBe(404);
+    expect(mocks.signedDownload).not.toHaveBeenCalled();
   });
 });

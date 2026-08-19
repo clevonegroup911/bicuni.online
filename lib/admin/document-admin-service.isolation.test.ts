@@ -226,7 +226,7 @@ describe("AdminDocumentService isolation et liste", () => {
         faculty: null,
         department: null,
         category: { id: "cat", name: "Droit" },
-        files: [{ id: "f1", fileName: "memoire.pdf", mimeType: "application/pdf", sizeBytes: 1024, checksum: "ab", version: 1, isUploaded: true, createdAt: stamped }],
+        files: [{ id: "f1", fileName: "memoire.pdf", mimeType: "application/pdf", sizeBytes: 1024, checksum: "ab", version: 1, isUploaded: true, scanStatus: "CLEAN", createdAt: stamped }],
         publication: { internalDoi: "10.87878/bicuni.doc-1", publishedAt: stamped },
         reviews: [],
         history: [],

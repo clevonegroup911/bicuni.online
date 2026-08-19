@@ -3,6 +3,7 @@ import { z } from "zod";
 import { auth } from "@/auth";
 import { db } from "@/lib/db/client";
 import { privateStorage } from "@/lib/storage";
+import { isCleanUploadedFile } from "@/lib/documents/file-scan";
 import { canReadDocumentSecure } from "@/lib/documents/scope";
 
 const actionSchema = z.enum(["download", "preview"]);
@@ -21,7 +22,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ file
   if (!file || file.document.status === "DELETED" || file.document.deletedAt) {
     return NextResponse.json({ error: "Fichier introuvable." }, { status: 404 });
   }
-  if (!file.isUploaded) return NextResponse.json({ error: "Fichier introuvable." }, { status: 404 });
+  if (!isCleanUploadedFile(file)) return NextResponse.json({ error: "Fichier introuvable." }, { status: 404 });
   const allowed = await canReadDocumentSecure(session.user, file.document);
   if (!allowed) return NextResponse.json({ error: "Fichier introuvable." }, { status: 404 });
 

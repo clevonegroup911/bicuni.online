@@ -25,6 +25,7 @@ const FILE_PUBLIC_SELECT = {
   checksum: true,
   version: true,
   isUploaded: true,
+  scanStatus: true,
   createdAt: true,
 } satisfies Prisma.DocumentFileSelect;
 
