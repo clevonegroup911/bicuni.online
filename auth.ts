@@ -6,7 +6,7 @@ import { compare } from "bcryptjs";
 import { createHash } from "node:crypto";
 import { db } from "@/lib/db/client";
 import { auditRequestContext } from "@/lib/admin/context";
-import { consumeAuthAttempt, requestIdentity } from "@/lib/auth/rate-limit";
+import { consumeAuthAttempt, RateLimitUnavailableError, requestIdentity } from "@/lib/auth/rate-limit";
 import { credentialsSchema } from "@/lib/auth/validators";
 import { logger } from "@/lib/observability/logger";
 
@@ -51,6 +51,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           }
           return { id: user.id, email: user.email, name: user.name, image: user.image, role: user.role, status: user.status };
         } catch (error) {
+          if (error instanceof RateLimitUnavailableError) return null;
           logger.error("auth.credentials.error", error);
           throw error;
         }

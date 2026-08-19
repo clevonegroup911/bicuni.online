@@ -1,14 +1,18 @@
 import { hash } from "bcryptjs";
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db/client";
-import { consumeAuthAttempt, requestIdentity } from "@/lib/auth/rate-limit";
+import { denyIfRateLimited, requestIdentity } from "@/lib/auth/rate-limit";
 import { hashToken } from "@/lib/auth/tokens";
 import { resetPasswordSchema } from "@/lib/auth/validators";
 
 export async function POST(request: Request) {
-  if (!await consumeAuthAttempt(`reset:${requestIdentity(request)}`, 8)) {
-    return NextResponse.json({ error: "Trop de tentatives." }, { status: 429 });
-  }
+  const limited = await denyIfRateLimited(
+    `reset:${requestIdentity(request)}`,
+    8,
+    undefined,
+    () => NextResponse.json({ error: "Trop de tentatives." }, { status: 429 }),
+  );
+  if (limited) return limited;
   const parsed = resetPasswordSchema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) {
     return NextResponse.json({ error: "Données invalides.", fields: parsed.error.flatten().fieldErrors }, { status: 400 });

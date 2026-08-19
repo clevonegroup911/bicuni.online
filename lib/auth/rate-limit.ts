@@ -1,11 +1,22 @@
 import { createHash } from "node:crypto";
+import { NextResponse } from "next/server";
 import { createClient, type RedisClientType } from "redis";
 import { logger } from "@/lib/observability/logger";
+
+export class RateLimitUnavailableError extends Error {
+  readonly status = 503 as const;
+  constructor() {
+    super("Distributed rate limiting is unavailable.");
+    this.name = "RateLimitUnavailableError";
+  }
+}
 
 type Entry = { count: number; resetAt: number };
 const store = new Map<string, Entry>();
 let redis: RedisClientType | undefined;
 let connecting: Promise<RedisClientType> | undefined;
+
+export type TrustedProxyStrategy = "cloud-run" | "loopback";
 
 async function redisConnection() {
   if (!process.env.REDIS_URL) return null;
@@ -51,6 +62,10 @@ async function withTimeout<T>(operation: Promise<T>) {
   }
 }
 
+export function distributedRateLimitRequired(environment = process.env.NODE_ENV) {
+  return environment === "production";
+}
+
 export async function consumeAuthAttempt(key: string, limit = 8, windowMs = 15 * 60_000) {
   const client = await redisConnection().catch(() => null);
   if (client) {
@@ -65,6 +80,11 @@ export async function consumeAuthAttempt(key: string, limit = 8, windowMs = 15 *
     }
   }
 
+  if (distributedRateLimitRequired()) {
+    logger.error("redis.rate_limit_unavailable", new Error("Distributed rate limiting is required in production."));
+    throw new RateLimitUnavailableError();
+  }
+
   const now = Date.now();
   const entry = store.get(key);
   if (!entry || entry.resetAt <= now) {
@@ -76,8 +96,51 @@ export async function consumeAuthAttempt(key: string, limit = 8, windowMs = 15 *
   return true;
 }
 
-export function requestIdentity(request: Request) {
-  return request.headers.get("x-forwarded-for")?.split(",")[0]?.trim()
-    ?? request.headers.get("x-real-ip")
-    ?? "unknown";
+export function trustedProxyStrategy(environment = process.env.NODE_ENV): TrustedProxyStrategy {
+  const configured = process.env.TRUSTED_PROXY_STRATEGY?.trim().toLowerCase();
+  if (configured === "cloud-run" || configured === "loopback") return configured;
+  if (process.env.K_SERVICE || environment === "production") return "cloud-run";
+  return "loopback";
+}
+
+export function clientIpFromForwardedFor(
+  forwardedFor: string | null,
+  strategy: TrustedProxyStrategy = trustedProxyStrategy(),
+) {
+  const forwarded = forwardedFor
+    ?.split(",")
+    .map((address) => address.trim())
+    .filter(Boolean) ?? [];
+  if (strategy === "cloud-run") {
+    // Cloud Run / GFE appends the connecting client as the last hop. Leading values are client-supplied.
+    return forwarded.at(-1) ?? null;
+  }
+  return null;
+}
+
+export function requestIdentity(request: Request, environment = process.env.NODE_ENV) {
+  const strategy = trustedProxyStrategy(environment);
+  const forwardedIp = clientIpFromForwardedFor(request.headers.get("x-forwarded-for"), strategy);
+  if (forwardedIp) return forwardedIp;
+  if (strategy !== "cloud-run" && environment !== "production") {
+    return request.headers.get("x-real-ip")?.trim() || "unknown";
+  }
+  return "unknown";
+}
+
+export async function denyIfRateLimited(
+  key: string,
+  limit?: number,
+  windowMs?: number,
+  onLimited: () => NextResponse = () => NextResponse.json({ error: "Trop de requêtes." }, { status: 429 }),
+) {
+  try {
+    if (!await consumeAuthAttempt(key, limit, windowMs)) return onLimited();
+  } catch (error) {
+    if (error instanceof RateLimitUnavailableError) {
+      return NextResponse.json({ error: "Service temporairement indisponible." }, { status: 503 });
+    }
+    throw error;
+  }
+  return null;
 }

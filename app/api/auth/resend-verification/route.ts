@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db/client";
-import { consumeAuthAttempt, requestIdentity } from "@/lib/auth/rate-limit";
+import { denyIfRateLimited, requestIdentity } from "@/lib/auth/rate-limit";
 import { createOpaqueToken, hashToken, tokenExpiry } from "@/lib/auth/tokens";
 import { forgotPasswordSchema } from "@/lib/auth/validators";
 import { authEmailTemplate, sendEmail } from "@/lib/email/service";
@@ -9,7 +9,13 @@ import { publicOrigin } from "@/lib/http/public-origin";
 const neutralMessage = "Si ce compte attend une vérification, un nouvel email vient d’être envoyé.";
 
 export async function POST(request: Request) {
-  if (!await consumeAuthAttempt(`verify-resend:${requestIdentity(request)}`, 5)) return NextResponse.json({ message: neutralMessage }, { status: 202 });
+  const limited = await denyIfRateLimited(
+    `verify-resend:${requestIdentity(request)}`,
+    5,
+    undefined,
+    () => NextResponse.json({ message: neutralMessage }, { status: 202 }),
+  );
+  if (limited) return limited;
   const parsed = forgotPasswordSchema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ message: neutralMessage }, { status: 202 });
   const user = await db.user.findUnique({ where: { email: parsed.data.email }, select: { id: true, email: true, emailVerified: true, status: true } });
