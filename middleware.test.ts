@@ -1,6 +1,8 @@
 import { NextRequest } from "next/server";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { proxy } from "./proxy";
+
+afterEach(() => vi.unstubAllEnvs());
 
 describe("protection des routes administratives", () => {
   it("redirige un visiteur anonyme vers la connexion administrateur", () => {
@@ -35,5 +37,16 @@ describe("protection des routes administratives", () => {
       headers: { host: "attacker.example" },
     });
     expect(proxy(request).headers.get("location")).toBe("https://app.bicuni.online/login?next=%2Fdashboard");
+  });
+
+  it("ajoute HSTS uniquement sur une requête HTTPS de production", () => {
+    vi.stubEnv("NODE_ENV", "production");
+    const https = proxy(new NextRequest("https://bicuni.online/"));
+    expect(https.headers.get("strict-transport-security")).toBe("max-age=31536000; includeSubDomains");
+    expect(https.headers.get("content-security-policy")).toContain("nonce-");
+    expect(https.headers.get("content-security-policy")).not.toMatch(/script-src[^;]*unsafe-inline/);
+
+    const http = proxy(new NextRequest("http://127.0.0.1:3170/"));
+    expect(http.headers.get("strict-transport-security")).toBeNull();
   });
 });

@@ -1,9 +1,10 @@
 import { createHash } from "node:crypto";
+import { requestIdentity } from "@/lib/auth/rate-limit";
 
 export function auditRequestContext(request: Request) {
-  const address = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? request.headers.get("x-real-ip");
+  const address = requestIdentity(request);
   return {
-    ipHash: address ? createHash("sha256").update(address).digest("hex") : null,
+    ipHash: address !== "unknown" ? createHash("sha256").update(address).digest("hex") : null,
     userAgent: request.headers.get("user-agent")?.slice(0, 500) ?? null,
   };
 }

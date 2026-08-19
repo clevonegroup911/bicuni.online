@@ -2,16 +2,31 @@ steps:
   - name: gcr.io/cloud-builders/docker
     args:
       - build
+      - --target
+      - runner
       - -t
       - ${_REGION}-docker.pkg.dev/$PROJECT_ID/bicuni/bicuni:$COMMIT_SHA
       - .
   - name: gcr.io/cloud-builders/docker
     args:
+      - build
+      - --target
+      - operations
+      - -t
+      - ${_REGION}-docker.pkg.dev/$PROJECT_ID/bicuni/bicuni-operations:$COMMIT_SHA
+      - .
+  - name: gcr.io/cloud-builders/docker
+    args:
       - push
       - ${_REGION}-docker.pkg.dev/$PROJECT_ID/bicuni/bicuni:$COMMIT_SHA
+  - name: gcr.io/cloud-builders/docker
+    args:
+      - push
+      - ${_REGION}-docker.pkg.dev/$PROJECT_ID/bicuni/bicuni-operations:$COMMIT_SHA
 
 substitutions:
   _REGION: europe-west1
 
 images:
   - ${_REGION}-docker.pkg.dev/$PROJECT_ID/bicuni/bicuni:$COMMIT_SHA
+  - ${_REGION}-docker.pkg.dev/$PROJECT_ID/bicuni/bicuni-operations:$COMMIT_SHA

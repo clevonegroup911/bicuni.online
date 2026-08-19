@@ -5,6 +5,7 @@ import { DocumentDomainError } from "@/lib/documents/document-service";
 import { internalDoiForApproval } from "@/lib/documents/doi";
 import { PersistentIdentifierService } from "@/lib/pid/service";
 import { isDocumentInAdminScope, managedDocumentInstitutionIds } from "@/lib/documents/scope";
+import { isCleanUploadedFile } from "@/lib/documents/file-scan";
 import { logger } from "../observability/logger";
 
 const ARCHIVE_FROM_STATUSES = ["APPROVED", "PUBLISHED"] as const;
@@ -40,6 +41,12 @@ export class ReviewService {
     await assertReviewScope(actor, document);
     if (input.decision === "REJECTED" && !input.comment?.trim()) {
       throw new DocumentDomainError("Un motif de rejet est obligatoire.");
+    }
+    if (input.decision === "APPROVED") {
+      const files = await tx.documentFile.findMany({ where: { documentId: id }, select: { isUploaded: true, scanStatus: true } });
+      if (!files.some(isCleanUploadedFile)) {
+        throw new DocumentDomainError("Un fichier analysé et propre est requis avant publication.", 409);
+      }
     }
 
     const publishedAt = input.decision === "APPROVED" ? new Date() : null;

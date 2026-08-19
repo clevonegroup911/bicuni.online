@@ -1,16 +1,20 @@
 import { hash } from "bcryptjs";
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db/client";
-import { consumeAuthAttempt, requestIdentity } from "@/lib/auth/rate-limit";
+import { denyIfRateLimited, requestIdentity } from "@/lib/auth/rate-limit";
 import { createOpaqueToken, hashToken, tokenExpiry } from "@/lib/auth/tokens";
 import { registerSchema } from "@/lib/auth/validators";
 import { authEmailTemplate, sendEmail } from "@/lib/email/service";
 import { publicOrigin } from "@/lib/http/public-origin";
 
 export async function POST(request: Request) {
-  if (!await consumeAuthAttempt(`register:${requestIdentity(request)}`, 5)) {
-    return NextResponse.json({ error: "Trop de tentatives. Réessayez plus tard." }, { status: 429 });
-  }
+  const limited = await denyIfRateLimited(
+    `register:${requestIdentity(request)}`,
+    5,
+    undefined,
+    () => NextResponse.json({ error: "Trop de tentatives. Réessayez plus tard." }, { status: 429 }),
+  );
+  if (limited) return limited;
 
   const body: unknown = await request.json().catch(() => null);
   const parsed = registerSchema.safeParse(body);

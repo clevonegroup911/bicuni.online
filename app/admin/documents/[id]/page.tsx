@@ -132,7 +132,7 @@ export default async function AdminDocumentDetailPage({ params }: { params: Prom
                         <td>{formatFileSize(file.sizeBytes)}</td>
                         <td><code className="admin-checksum">{file.checksum || "—"}</code></td>
                         <td>v{file.version}</td>
-                        <td>{file.isUploaded ? <DownloadButton fileId={file.id} /> : <small>Téléversement non confirmé</small>}</td>
+                        <td>{file.scanStatus === "CLEAN" ? <DownloadButton fileId={file.id} /> : <small>{file.scanStatus === "REJECTED" ? "Fichier rejeté" : "Analyse requise"}</small>}</td>
                       </tr>
                     ))}
                   </tbody>

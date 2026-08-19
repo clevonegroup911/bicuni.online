@@ -4,15 +4,27 @@
 
 `next dev` 16.3.1 peut ajouter automatiquement un bloc `nextjs-agent-rules` à `AGENTS.md`. Ce bloc généré ne fait pas partie du système d’opération BICUNI et ne doit jamais être commité. Après tout démarrage du serveur de développement, restaurer `AGENTS.md` depuis le SHA de base autorisé et vérifier que `AGENTS.md`, `.agents/`, `.codex/` et `.cursor/rules/` sont identiques à cette base. Les consignes techniques Next.js restent dans cette documentation.
 
+## Sondes HTTP
+
+`GET /api/health/live` confirme uniquement que le processus répond (`200`, `{ "status": "ok", "check": "live" }`). `GET /api/health/ready` vérifie PostgreSQL et, en production ou lorsque `REDIS_URL` est défini, Redis, avec un délai borné. Aucun secret n’est renvoyé. Ces routes `/api/health/*` sont les chemins canoniques des sondes Cloud Run. `/health/live` et `/health/ready` restent uniquement des alias de compatibilité.
+
+## Next.js 16, `tsc --showConfig` et `next-env.d.ts`
+
+`next dev` peut réécrire `next-env.d.ts` vers `.next/dev/types` et ajouter `.next/dev/dev/types` dans `tsconfig.json`. La forme de production attendue importe `.next/types/routes.d.ts` et `.next/types/root-params.d.ts`. Next 16.3.1 peut réajouter `.next/dev/types/**/*.ts` dans `include` pendant `next build` : conserver cette entrée, mais ne jamais réintroduire le chemin doublé `.next/dev/dev/types`. Next 16 active `experimental.useTypeScriptCli` par défaut et fait `JSON.parse` de `tsc --showConfig` (chemin Webpack/`load-jsconfig`). `npx tsc` peut résoudre le paquet factice `tsc@2.0.4` (sortie ANSI, pas du JSON). BICUNI force `useTypeScriptCli: false` (API TypeScript 5.9) et `npm run typecheck` appelle `node ./node_modules/typescript/bin/tsc`.
+
 ## CSP et origines
 
-La CSP est générée par `lib/security/headers.ts`. En production, les origines de scripts sont limitées à l’application et `js.stripe.com`; `unsafe-eval` et les jokers sont absents. `upgrade-insecure-requests` n’est émis que lorsque l’origine publique configurée (`PUBLIC_APP_URL`, puis `AUTH_URL`, puis `APP_URL`) est une URL HTTPS valide, afin de préserver les smoke tests de build sur loopback HTTP. `unsafe-inline` reste temporairement nécessaire pour les scripts bootstrap Next.js et les attributs de style de l’UI actuelle. La cible de durcissement est une nonce générée par requête et propagée par le proxy, après validation de l’impact sur le rendu statique. Les PDF privés sont affichés dans une iframe via URL signée; `frame-src` autorise donc `self`, `blob:` et Google Cloud Storage. Définir `GCS_PUBLIC_ORIGIN` uniquement pour un domaine CDN HTTPS distinct.
+La CSP est générée par `lib/security/headers.ts` et appliquée à la réponse via `proxy.ts` avec une nonce (`x-nonce`) et `strict-dynamic`. La même CSP est copiée sur les en-têtes de la requête pour que Next.js (`getScriptNonceFromHeader`) applique la nonce aux scripts du framework. En production, `script-src` n’inclut plus `unsafe-inline` lorsque la nonce est présente. **Exception résiduelle :** `style-src 'self' 'unsafe-inline'` reste nécessaire à cause des attributs `style={{ ... }}` de l’UI. `unsafe-eval` est limité au développement. HSTS (`max-age=31536000; includeSubDomains`) n’est émis qu’en production HTTPS. `upgrade-insecure-requests` n’est émis que lorsque l’origine publique configurée est HTTPS. Les PDF privés sont affichés dans une iframe via URL signée; `frame-src` autorise `self`, `blob:` et Google Cloud Storage. Définir `GCS_PUBLIC_ORIGIN` uniquement pour un domaine CDN HTTPS distinct.
 
 Les polices utilisent une pile système locale : le build ne télécharge plus Inter ou Poppins depuis Google Fonts. `img-src` autorise uniquement l’application, les images `data:`/`blob:` effectivement utilisées par l’UI, `storage.googleapis.com` et l’éventuelle origine GCS HTTPS explicite. Les avatars hébergés sur une autre origine doivent être migrés vers une origine explicitement autorisée avant affichage; aucun joker ni schéma `https:` générique n’est accepté.
 
 ## Redis et rate limiting
 
-`REDIS_URL` active le compteur partagé multi-instance. `REDIS_KEY_PREFIX` sépare les environnements; les identifiants sont hachés avant stockage et les clés expirent avec la fenêtre. Connexion et commandes ont des timeouts courts configurables. En cas de panne, le comportement fail-safe explicite est un repli vers un compteur mémoire par instance: l’authentification reste disponible mais la protection globale est dégradée. Les événements sont journalisés sans URL Redis, clé, IP ni email. Superviser `redis.rate_limit_*` et alerter sur tout repli en production.
+`REDIS_URL` est obligatoire en production (Cloud Run multi-instance). Le repli `Map` est interdit lorsque `NODE_ENV=production`; une indisponibilité Redis échoue fermé (`503`). `TRUSTED_PROXY_STRATEGY=cloud-run` (défaut si `K_SERVICE` ou production) n’utilise que le dernier hop de `X-Forwarded-For` (GFE/Cloud Run). Les valeurs de tête, spoofables, et `X-Real-IP` sont ignorées. En local, `loopback` ignore `X-Forwarded-For`. `REDIS_KEY_PREFIX` sépare les environnements; les identifiants sont hachés. Journaliser `redis.rate_limit_*` sans URL, clé, IP ni email.
+
+## Upload et analyse antivirus
+
+La confirmation d’upload recalcule taille et SHA-256 côté serveur. `isUploaded=true` envoyé par le client est ignoré. Les états sont `PENDING` / `SCANNING` / `CLEAN` / `REJECTED`. Publication, catalogue public et téléchargement public exigent `CLEAN`. Le scanner reçoit le bucket privé, l’objectKey, la génération GCS disponible, le checksum serveur, la taille et le MIME; aucune URL publique permanente n’est transmise. En production, `ANTIVIRUS_SCANNER_AUTHORIZATION` est obligatoire. Sans endpoint ou authentification, sur timeout, réponse invalide, verdict ambigu ou checksum divergent, le résultat reste `unavailable` et le fichier `PENDING`, jamais `CLEAN`. Les fichiers existants migrés restent `PENDING` jusqu’à une analyse réelle.
 
 ## Email
 

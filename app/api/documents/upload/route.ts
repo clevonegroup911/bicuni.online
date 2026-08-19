@@ -1,13 +1,17 @@
 import { NextResponse } from "next/server";
+import { z } from "zod";
 import { auth } from "@/auth";
 import { db } from "@/lib/db/client";
-import { consumeAuthAttempt, requestIdentity } from "@/lib/auth/rate-limit";
+import { denyIfRateLimited, requestIdentity } from "@/lib/auth/rate-limit";
 import { hasActiveSubscription } from "@/lib/subscriptions/service";
 import { privateStorage, safeObjectKey } from "@/lib/storage";
 import { documentUploadSchema } from "@/lib/validators/document";
 import { assertCanCreate, assertInstitutionHierarchy, slugify } from "@/lib/documents/document-service";
+import { confirmStoredDocumentFile, FileIngestionError } from "@/lib/documents/file-ingestion";
 import { logger } from "@/lib/observability/logger";
 import { deleteUnboundDocument } from "@/lib/pid/resource-binding";
+
+const confirmSchema = z.object({ fileId: z.string().min(1) }).passthrough();
 
 export async function POST(request: Request) {
   const session = await auth();
@@ -16,9 +20,8 @@ export async function POST(request: Request) {
   if (session.user.role !== "SUPER_ADMIN" && !await hasActiveSubscription(session.user.id)) {
     return NextResponse.json({ error: "Abonnement actif requis." }, { status: 403 });
   }
-  if (!await consumeAuthAttempt(`upload:${session.user.id}:${requestIdentity(request)}`, 20, 60_000)) {
-    return NextResponse.json({ error: "Trop de requêtes." }, { status: 429 });
-  }
+  const limited = await denyIfRateLimited(`upload:${session.user.id}:${requestIdentity(request)}`, 20, 60_000);
+  if (limited) return limited;
 
   const parsed = documentUploadSchema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) {
@@ -55,6 +58,7 @@ export async function POST(request: Request) {
           sizeBytes: parsed.data.sizeBytes,
           checksum: parsed.data.checksum,
           isUploaded: false,
+          scanStatus: "PENDING",
         },
       },
     },
@@ -80,15 +84,20 @@ export async function POST(request: Request) {
 export async function PATCH(request: Request) {
   const session = await auth();
   if (!session?.user) return NextResponse.json({ error: "Non authentifié." }, { status: 401 });
-  const body = await request.json().catch(() => null) as { fileId?: string } | null;
-  if (!body?.fileId) return NextResponse.json({ error: "Fichier invalide." }, { status: 400 });
-  const file = await db.documentFile.findUnique({ where: { id: body.fileId }, include: { document: true } });
-  if (!file) return NextResponse.json({ error: "Fichier introuvable." }, { status: 404 });
-  if (file.document.authorId !== session.user.id && session.user.role !== "SUPER_ADMIN") return NextResponse.json({ error: "Accès refusé." }, { status: 403 });
-  const stored = await privateStorage().stat(file.objectKey);
-  if (!stored.exists || stored.sizeBytes !== file.sizeBytes || stored.contentType !== file.mimeType) {
-    return NextResponse.json({ error: "Le fichier stocké ne correspond pas aux métadonnées annoncées." }, { status: 422 });
+  const payload = await request.json().catch(() => null);
+  const parsed = confirmSchema.safeParse(payload);
+  if (!parsed.success) return NextResponse.json({ error: "Fichier invalide." }, { status: 400 });
+  try {
+    const result = await confirmStoredDocumentFile({
+      fileId: parsed.data.fileId,
+      actor: { id: session.user.id, role: session.user.role },
+      payload: parsed.data,
+    });
+    return NextResponse.json(result, { status: result.scanStatus === "CLEAN" ? 200 : 202 });
+  } catch (error) {
+    if (error instanceof FileIngestionError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
+    throw error;
   }
-  await db.documentFile.update({ where: { id: file.id }, data: { isUploaded: true } });
-  return NextResponse.json({ confirmed: true });
 }

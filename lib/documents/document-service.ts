@@ -3,6 +3,7 @@ import { db } from "../db/client";
 import type { DocumentActor } from "@/lib/documents/permissions";
 import { canCreateDocument, canDeleteDocument, canEditDocument, canSubmitDocument } from "@/lib/documents/permissions";
 import { registeredDoi } from "@/lib/documents/doi";
+import { isCleanUploadedFile } from "@/lib/documents/file-scan";
 import type { documentMetadataSchema } from "@/lib/validators/document";
 import type { z } from "zod";
 import { logger } from "../observability/logger";
@@ -19,6 +20,7 @@ export const documentFilePublicSelect = {
   checksum: true,
   version: true,
   isUploaded: true,
+  scanStatus: true,
   createdAt: true,
 } satisfies Prisma.DocumentFileSelect;
 
@@ -58,7 +60,15 @@ export class DocumentService {
       }),
       db.document.count({ where }),
     ]);
-    return { items: items.map(sanitizeDocumentForClient), total, page: input.page, pageSize: input.pageSize };
+    return {
+      items: items.map((item) => sanitizeDocumentForClient({
+        ...item,
+        files: item.files.filter(isCleanUploadedFile),
+      })),
+      total,
+      page: input.page,
+      pageSize: input.pageSize,
+    };
   }
 
   async update(id: string, actor: DocumentActor, data: z.infer<typeof documentMetadataSchema> | Partial<z.infer<typeof documentMetadataSchema>>) {
@@ -82,7 +92,7 @@ export class DocumentService {
     const current = await db.document.findUnique({ where: { id }, include: { files: true } });
     if (!current) throw new DocumentDomainError("Document introuvable.", 404);
     if (!canSubmitDocument(actor, current)) throw new DocumentDomainError("Ce document ne peut pas être soumis.", 403);
-    if (!current.files.some((file) => file.isUploaded)) throw new DocumentDomainError("Le fichier doit être confirmé avant soumission.");
+    if (!current.files.some(isCleanUploadedFile)) throw new DocumentDomainError("Un fichier analysé et propre est requis avant soumission.");
     const result = await db.document.update({ where: { id }, data: { status: "PENDING_REVIEW", history: { create: { actorId: actor.id, action: "SUBMITTED", fromStatus: "DRAFT", toStatus: "PENDING_REVIEW", version: current.currentVersion } } } });
     logger.info("document.transition", { documentId: id, actorId: actor.id, fromStatus: "DRAFT", toStatus: "PENDING_REVIEW" });
     return result;
@@ -159,6 +169,7 @@ export function sanitizeDocumentForClient<T extends {
       checksum: file.checksum,
       version: file.version,
       isUploaded: file.isUploaded,
+      scanStatus: file.scanStatus,
       createdAt: file.createdAt,
     })),
     publication: document.publication

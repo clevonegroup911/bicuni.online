@@ -13,6 +13,9 @@ describe("contrats Stripe utilisateur", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.stubEnv("STRIPE_SECRET_KEY", "sk_test_contract_only");
+    vi.stubEnv("PUBLIC_APP_URL", "https://bicuni.online");
+    vi.stubEnv("AUTH_URL", "");
+    vi.stubEnv("APP_URL", "");
     mocks.auth.mockResolvedValue({ user: { id: "user-1" } });
     mocks.invoiceCount.mockResolvedValue(0);
   });

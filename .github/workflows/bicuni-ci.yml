@@ -7,31 +7,165 @@ on:
       - main
       - develop
 
+permissions:
+  contents: read
+
+concurrency:
+  group: bicuni-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   quality:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      DATABASE_URL: postgresql://bicuni:static-ci-password@127.0.0.1:5432/bicuni?schema=public
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
       - name: Setup Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 22
           cache: npm
 
       - name: Install dependencies
-        run: npm ci
+        run: npm ci --no-audit --no-fund
+
+      - name: Dependency audit (high and critical)
+        run: npm audit --audit-level=high
+
+      - name: Validate Prisma schema
+        run: npx prisma validate
 
       - name: Lint
-        run: npm run lint --if-present
+        run: npm run lint
 
       - name: Typecheck
-        run: npm run typecheck --if-present
+        run: npm run typecheck
 
       - name: Test
-        run: npm test --if-present
+        run: npm test
 
       - name: Build
-        run: npm run build --if-present
+        run: npm run build
+        env:
+          PUBLIC_APP_URL: http://127.0.0.1:3000
+          AUTH_URL: http://127.0.0.1:3000
+
+      - name: Verify generated files and formatting
+        run: |
+          git diff --check
+          if ! git diff --exit-code; then
+            echo "::error::Tracked files changed during CI. next-env.d.ts and tsconfig.json must remain stable after build."
+            git status --short
+            exit 1
+          fi
+
+  secret-detection:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      - name: Checkout full history
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+
+      - name: Detect secrets
+        uses: gitleaks/gitleaks-action@dcedce43c6f43de0b836d1fe38946645c9c638dc # v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  sast:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@d6317709a54fd87078d323eeb0e48ec331c8e621 # v3
+        with:
+          languages: javascript-typescript
+
+      - name: Analyze
+        uses: github/codeql-action/analyze@d6317709a54fd87078d323eeb0e48ec331c8e621 # v3
+
+  container-scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Setup Docker Buildx
+        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
+
+      - name: Build web image locally
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
+        with:
+          context: .
+          target: runner
+          load: true
+          push: false
+          tags: bicuni-ci:${{ github.sha }}
+
+      - name: Smoke web image with Prisma and healthchecks
+        run: |
+          image="bicuni-ci:${{ github.sha }}"
+          docker run --rm \
+            -e DATABASE_URL='postgresql://bicuni:static-ci-password@127.0.0.1:5432/bicuni?schema=public' \
+            "$image" \
+            node -e 'const { PrismaClient } = require("@prisma/client"); const client = new PrismaClient(); console.log("Prisma client initialized"); client.$disconnect()'
+          container="bicuni-runner-${{ github.run_id }}"
+          docker run --rm -d --name "$container" -p 127.0.0.1:3100:3000 \
+            -e DATABASE_URL='postgresql://bicuni:static-ci-password@127.0.0.1:5432/bicuni?schema=public' \
+            -e AUTH_SECRET='static-ci-smoke-secret-not-real' \
+            -e PUBLIC_APP_URL='http://127.0.0.1:3100' \
+            "$image"
+          trap 'docker rm -f "$container" >/dev/null 2>&1 || true' EXIT
+          for attempt in $(seq 1 30); do
+            if curl --fail --silent http://127.0.0.1:3100/api/health/live > /tmp/live.json; then break; fi
+            sleep 1
+          done
+          test "$(curl --silent --output /tmp/live.json --write-out '%{http_code}' http://127.0.0.1:3100/api/health/live)" = "200"
+          test "$(curl --silent --output /tmp/ready.json --write-out '%{http_code}' http://127.0.0.1:3100/api/health/ready)" = "503"
+          grep -q '"database":"unavailable"' /tmp/ready.json
+          grep -q '"redis":"unavailable"' /tmp/ready.json
+
+      - name: Scan web image (high and critical)
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: bicuni-ci:${{ github.sha }}
+          format: table
+          exit-code: "1"
+          ignore-unfixed: true
+          vuln-type: os,library
+          severity: HIGH,CRITICAL
+
+      - name: Build operations image locally
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
+        with:
+          context: .
+          target: operations
+          load: true
+          push: false
+          tags: bicuni-operations-ci:${{ github.sha }}
+
+      - name: Scan operations image (high and critical)
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: bicuni-operations-ci:${{ github.sha }}
+          format: table
+          exit-code: "1"
+          ignore-unfixed: true
+          vuln-type: os,library
+          severity: HIGH,CRITICAL

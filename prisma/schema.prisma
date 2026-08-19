@@ -44,6 +44,13 @@ enum DocumentType {
   RAPPORT
 }
 
+enum FileScanStatus {
+  PENDING
+  SCANNING
+  CLEAN
+  REJECTED
+}
+
 enum SubscriptionStatus {
   INCOMPLETE
   ACTIVE
@@ -348,17 +355,21 @@ model Document {
 }
 
 model DocumentFile {
-  id         String   @id @default(cuid())
+  id         String         @id @default(cuid())
   documentId String
-  objectKey  String   @unique
+  objectKey  String         @unique
   fileName   String
   mimeType   String
   sizeBytes  Int
   checksum   String
-  version    Int      @default(1)
-  isUploaded Boolean  @default(true)
-  createdAt  DateTime @default(now())
-  document   Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  version    Int            @default(1)
+  isUploaded Boolean        @default(false)
+  scanStatus FileScanStatus @default(PENDING)
+  scannedAt  DateTime?
+  createdAt  DateTime       @default(now())
+  document   Document       @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@index([documentId, scanStatus])
 }
 
 model DocumentFavorite {

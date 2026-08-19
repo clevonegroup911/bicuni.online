@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
   documentFindUnique,
+  documentFileFindMany,
   documentUpdateMany,
   reviewCreate,
   historyCreate,
@@ -12,6 +13,7 @@ const {
   ensureForPublishedDocument,
 } = vi.hoisted(() => ({
   documentFindUnique: vi.fn(),
+  documentFileFindMany: vi.fn(),
   documentUpdateMany: vi.fn(),
   reviewCreate: vi.fn(),
   historyCreate: vi.fn(),
@@ -49,6 +51,7 @@ const pending = {
 function tx() {
   return {
     document: { findUnique: documentFindUnique, updateMany: documentUpdateMany },
+    documentFile: { findMany: documentFileFindMany },
     review: { create: reviewCreate },
     documentHistory: { create: historyCreate },
     publication: { findUnique: publicationFindUnique, upsert: publicationUpsert },
@@ -66,7 +69,17 @@ describe("ReviewService", () => {
     publicationUpsert.mockResolvedValue({});
     documentFindUnique.mockReset();
     documentFindUnique.mockResolvedValue(pending);
+    documentFileFindMany.mockResolvedValue([{ isUploaded: true, scanStatus: "CLEAN" }]);
     ensureForPublishedDocument.mockResolvedValue({ identifier: "bcu/2026.art.TESTULID000000000000" });
+  });
+
+  it("refuse la publication sans fichier analysé propre", async () => {
+    documentFileFindMany.mockResolvedValue([{ isUploaded: true, scanStatus: "PENDING" }]);
+    await expect(
+      new ReviewService().review("doc-1", { id: "root", role: "SUPER_ADMIN" }, { decision: "APPROVED" }),
+    ).rejects.toThrow(/analysé et propre/);
+    expect(documentUpdateMany).not.toHaveBeenCalled();
+    expect(publicationUpsert).not.toHaveBeenCalled();
   });
 
   it("n’assigne aucun DOI synthétique lors d’une approbation", async () => {
