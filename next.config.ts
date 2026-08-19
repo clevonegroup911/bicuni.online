@@ -2,6 +2,7 @@ import type { NextConfig } from "next";
 import { staticSecurityHeaders } from "./lib/security/headers";
 
 const nextConfig: NextConfig = {
+  output: "standalone",
   typedRoutes: false,
   poweredByHeader: false,
   // TypeScript 5.9 exposes the compiler API. Next 16's CLI backend JSON.parse()s
