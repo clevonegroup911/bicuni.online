@@ -8,6 +8,28 @@ appliquer les migrations via un Cloud Run Job, puis basculer le trafic sur
 **Ne jamais** exécuter `prisma migrate reset` sur une base contenant des données.
 **Ne jamais** committer de secrets, fichiers `.env` ou mots de passe.
 
+La matrice normative des variables est dans
+[`docs/cloud-run-environment-matrix.md`](cloud-run-environment-matrix.md). Cette
+procédure ne demande jamais d’afficher leurs valeurs.
+
+## Architecture cible
+
+- `bicuni-online` : service web Cloud Run permanent, image Docker cible `runner`,
+  sans Prisma CLI ni sources opérationnelles;
+- `bicuni-migrate` : Cloud Run Job utilisant l’image distincte `operations` et
+  exécutant uniquement `prisma migrate deploy` après sauvegarde vérifiée;
+- `bicuni-search-worker` : Cloud Run Job séparé utilisant `operations`, déclenché
+  par ordonnanceur ou orchestration et jamais dans le processus web;
+- Cloud SQL PostgreSQL : état transactionnel et outbox de recherche;
+- Redis managé : rate limiting distribué obligatoire en production et cache;
+- Meilisearch : service privé séparé, accessible seulement par le web/worker;
+- GCS privé : objets documentaires, URLs V4 signées et métadonnée SHA-256 signée;
+- Resend et Stripe : APIs externes, secrets dans Secret Manager et tests sandbox
+  obligatoires en staging.
+
+Le service web doit rester stateless. Une panne Redis bloque les opérations
+soumises au rate limiting au lieu de revenir à un compteur local par instance.
+
 ## Contexte production confirmé
 
 | Élément | Valeur |
@@ -77,9 +99,11 @@ Ne pas continuer si la sauvegarde n’est pas `SUCCESSFUL`.
 
 ## 3. Construction de l’image immuable
 
-`cloudbuild.yaml` construit et pousse uniquement :
+`cloudbuild.yaml` construit et pousse uniquement deux images immuables :
 
 `europe-west1-docker.pkg.dev/$PROJECT_ID/bicuni/bicuni:$COMMIT_SHA`
+
+`europe-west1-docker.pkg.dev/$PROJECT_ID/bicuni/bicuni-operations:$COMMIT_SHA`
 
 Il **ne déploie pas** Cloud Run.
 
@@ -96,6 +120,10 @@ gcloud builds submit \
 Image attendue :
 
 `europe-west1-docker.pkg.dev/bicuni-504414/bicuni/bicuni:<COMMIT_SHA>`
+
+Image opérationnelle attendue :
+
+`europe-west1-docker.pkg.dev/bicuni-504414/bicuni/bicuni-operations:<COMMIT_SHA>`
 
 ---
 
@@ -121,14 +149,14 @@ IMAGE_DIGEST="europe-west1-docker.pkg.dev/bicuni-504414/bicuni/bicuni@sha256:<DI
 
 ## 5. Création ou mise à jour du Cloud Run Job `bicuni-migrate`
 
-Le Job utilise la **même image immuable** que le service, avec une commande
-dédiée aux migrations.
+Le Job utilise l’image immuable **opérationnelle**, distincte de l’image web
+minimale, avec une commande dédiée aux migrations.
 
 Exemple de création (adapter si le Job existe déjà avec `gcloud run jobs update`) :
 
 ```bash
 COMMIT_SHA="$(git rev-parse HEAD)"
-IMAGE="europe-west1-docker.pkg.dev/bicuni-504414/bicuni/bicuni:${COMMIT_SHA}"
+IMAGE="europe-west1-docker.pkg.dev/bicuni-504414/bicuni/bicuni-operations:${COMMIT_SHA}"
 
 gcloud run jobs create bicuni-migrate \
   --project=bicuni-504414 \
@@ -137,8 +165,8 @@ gcloud run jobs create bicuni-migrate \
   --service-account=bicuni-runtime@bicuni-504414.iam.gserviceaccount.com \
   --set-cloudsql-instances=bicuni-504414:europe-west1:bicuni-postgres \
   --set-secrets=DATABASE_URL=DATABASE_URL:latest \
-  --command=npm \
-  --args=run,db:migrate:deploy \
+  --command=node_modules/.bin/prisma \
+  --args=migrate,deploy \
   --max-retries=0 \
   --task-timeout=15m
 ```
@@ -153,8 +181,8 @@ gcloud run jobs update bicuni-migrate \
   --service-account=bicuni-runtime@bicuni-504414.iam.gserviceaccount.com \
   --set-cloudsql-instances=bicuni-504414:europe-west1:bicuni-postgres \
   --set-secrets=DATABASE_URL=DATABASE_URL:latest \
-  --command=npm \
-  --args=run,db:migrate:deploy \
+  --command=node_modules/.bin/prisma \
+  --args=migrate,deploy \
   --max-retries=0 \
   --task-timeout=15m
 ```
@@ -205,11 +233,11 @@ Git, Cloud Build, le Dockerfile ou les arguments de commande.
 ## 9. Commande du Job
 
 ```text
-npm run db:migrate:deploy
+node_modules/.bin/prisma migrate deploy
 ```
 
-Équivalent Prisma : `prisma migrate deploy` (migrations déjà présentes dans
-`/app/prisma` de l’image).
+Le binaire Prisma local et les migrations sont présents dans l’image
+`operations`; npm global est volontairement absent de l’image finale.
 
 ---
 
@@ -240,6 +268,20 @@ Vérifier l’absence d’erreur Prisma et la cohérence avec
 `npm run db:migrate:status` (hors production locale, ou via un Job de statut dédié
 si nécessaire).
 
+### Worker de recherche séparé
+
+Créer ou mettre à jour `bicuni-search-worker` avec l’image
+`bicuni-operations:<COMMIT_SHA>`, la commande
+`node_modules/.bin/tsx scripts/search-worker.ts`, une seule
+tâche par exécution et des versions précises des secrets `DATABASE_URL`,
+`MEILISEARCH_MASTER_KEY` et, si utilisé, `REDIS_URL`. Le Job doit recevoir
+`MEILISEARCH_HOST` et `SEARCH_WORKER_BATCH_SIZE` comme configuration non secrète.
+
+Le worker traite un lot puis s’arrête : l’exécution récurrente appartient à Cloud
+Scheduler/Workflows. Ne pas lancer cette boucle dans `bicuni-online`, et ne pas
+exposer le Job publiquement. Un échec conserve l’outbox PostgreSQL pour reprise;
+vérifier les logs et le retard d’indexation avant promotion.
+
 ---
 
 ## 12. Déploiement de `bicuni-online` avec `--no-traffic`
@@ -258,6 +300,14 @@ gcloud run deploy bicuni-online \
   --no-traffic \
   --tag=candidate
 ```
+
+Compléter les secrets et variables exactement selon la matrice, sans valeurs en
+ligne de commande ni `--set-env-vars` contenant un secret. Configurer la sonde de
+démarrage sur `/api/health/ready`, afin qu’une instance ne soit acceptée qu’après
+connexion PostgreSQL, et la sonde de vivacité sur `/api/health/live`. Lorsque la
+readiness probe Cloud Run est activée pour le projet, utiliser également
+`/api/health/ready`. Cette route répond `503` si Cloud SQL est indisponible. Les
+deux routes sont sans cache et ne renvoient aucun détail de connexion.
 
 Notes :
 
@@ -292,9 +342,13 @@ Sur l’URL taguée `candidate` (pas le domaine public tant que le trafic n’a 
 basculé), vérifier au minimum :
 
 1. `GET /` — page d’accueil
-2. `GET /login` — authentification utilisateur
-3. `GET /admin/login` — authentification Back Office
-4. `GET /admin/dashboard` — accessible uniquement après authentification admin
+2. `GET /api/health/live` — `200`, processus vivant
+3. `GET /api/health/ready` — `200`, PostgreSQL joignable
+4. `GET /login` — authentification utilisateur
+5. `GET /admin/login` — authentification Back Office
+6. `GET /admin/dashboard` — accessible uniquement après authentification admin
+7. inscription/réinitialisation avec Resend staging, upload GCS privé, recherche
+   Meilisearch et checkout/webhook Stripe en sandbox lorsque ces modules sont actifs
 
 Exemple (remplacer `CANDIDATE_URL`) :
 
@@ -302,6 +356,8 @@ Exemple (remplacer `CANDIDATE_URL`) :
 CANDIDATE_URL="https://candidate---bicuni-online-xxxxx-ew.a.run.app"
 
 curl -sS -o /dev/null -w "%{http_code}\n" "${CANDIDATE_URL}/"
+curl -sS -o /dev/null -w "%{http_code}\n" "${CANDIDATE_URL}/api/health/live"
+curl -sS -o /dev/null -w "%{http_code}\n" "${CANDIDATE_URL}/api/health/ready"
 curl -sS -o /dev/null -w "%{http_code}\n" "${CANDIDATE_URL}/login"
 curl -sS -o /dev/null -w "%{http_code}\n" "${CANDIDATE_URL}/admin/login"
 curl -sS -o /dev/null -w "%{http_code}\n" "${CANDIDATE_URL}/admin/dashboard"
@@ -361,15 +417,18 @@ gcloud run services update-traffic bicuni-online \
 
 Vérifier immédiatement `/`, `/login` et `/admin/login` sur l’URL publique.
 
-Si une migration incompatible a été appliquée, restaurer depuis la sauvegarde
-Cloud SQL **avant** de rejouer un déploiement. Documenter l’incident.
+Si une migration incompatible a été appliquée, ne pas modifier la base en place
+à l’aveugle. Restaurer la sauvegarde dans une instance/base isolée, contrôler
+schéma, volumes et parcours critiques, geler les écritures, puis basculer la
+connexion selon la procédure d’incident approuvée. Le rollback de trafic ne
+constitue pas à lui seul un rollback de données. Documenter l’incident.
 
 ---
 
 ## 17. Initialisation du SUPER_ADMIN de production (procédure distincte)
 
 À exécuter **une seule fois**, après migrations réussies, via un Job ponctuel ou
-une exécution contrôlée de la même image — **jamais** au démarrage du service.
+une exécution contrôlée de l’image `operations` — **jamais** au démarrage du service.
 
 Variables requises (valeurs d’exemple factices uniquement) :
 
@@ -384,7 +443,7 @@ Exemple d’exécution ponctuelle via Cloud Run Job (créer/mettre à jour un Jo
 
 ```bash
 COMMIT_SHA="$(git rev-parse HEAD)"
-IMAGE="europe-west1-docker.pkg.dev/bicuni-504414/bicuni/bicuni:${COMMIT_SHA}"
+IMAGE="europe-west1-docker.pkg.dev/bicuni-504414/bicuni/bicuni-operations:${COMMIT_SHA}"
 
 gcloud run jobs create bicuni-admin-init \
   --project=bicuni-504414 \
@@ -394,8 +453,8 @@ gcloud run jobs create bicuni-admin-init \
   --set-cloudsql-instances=bicuni-504414:europe-west1:bicuni-postgres \
   --set-secrets=DATABASE_URL=DATABASE_URL:latest \
   --update-env-vars="SUPER_ADMIN_EMAIL=admin@example.com,SUPER_ADMIN_NAME=Super Admin,SUPER_ADMIN_PASSWORD=RemplacerParUnMotDePasseFort" \
-  --command=npm \
-  --args=run,admin:init \
+  --command=node_modules/.bin/tsx \
+  --args=scripts/init-super-admin.ts \
   --max-retries=0 \
   --task-timeout=10m
 
@@ -439,9 +498,9 @@ gcloud run jobs delete bicuni-admin-init \
 
 `cloudbuild.yaml` se limite à :
 
-1. construire `europe-west1-docker.pkg.dev/$PROJECT_ID/bicuni/bicuni:$COMMIT_SHA` ;
-2. pousser l’image dans Artifact Registry ;
-3. déclarer l’image produite dans `images:`.
+1. construire les cibles `runner` et `operations` avec le même `$COMMIT_SHA` ;
+2. pousser les deux images dans Artifact Registry ;
+3. déclarer les deux images produites dans `images:`.
 
 Il ne contient **pas** :
 
@@ -457,11 +516,15 @@ Le déploiement reste manuel, après sauvegarde, migrations et contrôles.
 - [ ] Commit `main` identifié et propre
 - [ ] Sauvegarde Cloud SQL réussie
 - [ ] Image construite avec `$COMMIT_SHA`
-- [ ] Digest vérifié
+- [ ] Digests web et operations vérifiés et scans HIGH/CRITICAL réussis
+- [ ] Matrice des variables revue sans afficher de valeur; versions de secrets figées
 - [ ] Job `bicuni-migrate` exécuté avec succès
 - [ ] Logs de migration lus et OK
+- [ ] Job `bicuni-search-worker` exécuté avec succès et retard d’outbox acceptable
 - [ ] Révision `bicuni-online` déployée avec `--no-traffic` + tag `candidate`
-- [ ] Tests `/`, `/login`, `/admin/login`, `/admin/dashboard` OK
+- [ ] Healthchecks live/ready et smoke tests fonctionnels staging OK
+- [ ] Resend staging, Stripe sandbox, GCS privé, Redis et Meilisearch validés si actifs
 - [ ] Trafic basculé progressivement
 - [ ] Révision `bicuni-online-00001-vjc` toujours connue pour rollback
+- [ ] Restauration Cloud SQL testée dans une cible isolée et RTO/RPO consignés
 - [ ] Secrets `SUPER_ADMIN_*` absents du service permanent
