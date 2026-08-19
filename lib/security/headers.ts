@@ -19,7 +19,15 @@ const configuredPublicOrigin = () => {
   }
 };
 
-export function contentSecurityPolicy(environment = process.env.NODE_ENV) {
+export const HSTS_VALUE = "max-age=31536000; includeSubDomains";
+
+/**
+ * Residual CSP exception:
+ * `style-src 'unsafe-inline'` remains because the UI still emits style attributes
+ * (`style={{ ... }}`) that cannot be covered by a nonce. Script `unsafe-inline`
+ * is omitted in production when a request nonce is provided.
+ */
+export function contentSecurityPolicy(environment = process.env.NODE_ENV, nonce?: string) {
   const development = environment !== "production";
   const storageOrigin = normalizeOrigin(process.env.GCS_PUBLIC_ORIGIN);
   const imageSources = ["'self'", "data:", "blob:", "https://storage.googleapis.com"];
@@ -29,11 +37,13 @@ export function contentSecurityPolicy(environment = process.env.NODE_ENV) {
     frameSources.push(storageOrigin);
   }
 
+  const scriptSrc = nonce
+    ? `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'${development ? " 'unsafe-eval'" : ""} https://js.stripe.com`
+    : `script-src 'self'${development ? " 'unsafe-inline' 'unsafe-eval'" : ""} https://js.stripe.com`;
+
   const directives = [
     "default-src 'self'",
-    // Next.js currently emits inline bootstrap scripts. Remove unsafe-inline after nonce propagation is adopted.
-    `script-src 'self' 'unsafe-inline'${development ? " 'unsafe-eval'" : ""} https://js.stripe.com`,
-    // Next.js and the current UI emit style attributes. Keep this exception scoped to styles.
+    scriptSrc,
     "style-src 'self' 'unsafe-inline'",
     `img-src ${imageSources.join(" ")}`,
     "font-src 'self' data:",
@@ -53,13 +63,30 @@ export function contentSecurityPolicy(environment = process.env.NODE_ENV) {
   return directives.join("; ");
 }
 
-export function securityHeaders(environment = process.env.NODE_ENV) {
+export function staticSecurityHeaders() {
   return [
-    { key: "Content-Security-Policy", value: contentSecurityPolicy(environment) },
     { key: "X-Content-Type-Options", value: "nosniff" },
     { key: "X-Frame-Options", value: "DENY" },
     { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
     { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=(), payment=(self \"https://js.stripe.com\")" },
     { key: "Cross-Origin-Opener-Policy", value: "same-origin-allow-popups" },
   ];
+}
+
+export function shouldSendHsts(environment = process.env.NODE_ENV, https = false) {
+  return environment === "production" && https;
+}
+
+export function securityHeaders(
+  environment = process.env.NODE_ENV,
+  options: { nonce?: string; https?: boolean } = {},
+) {
+  const headers = [
+    { key: "Content-Security-Policy", value: contentSecurityPolicy(environment, options.nonce) },
+    ...staticSecurityHeaders(),
+  ];
+  if (shouldSendHsts(environment, options.https === true)) {
+    headers.push({ key: "Strict-Transport-Security", value: HSTS_VALUE });
+  }
+  return headers;
 }

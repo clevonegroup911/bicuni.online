@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { securityHeaders } from "@/lib/security/headers";
 
 const protectedPaths = ["/dashboard", "/admin", "/university", "/api/admin"];
 const publicAdminRoutes = new Set(["/admin/login", "/admin/denied"]);
@@ -17,14 +18,32 @@ function trustedLoopbackOrigin(request: NextRequest) {
   }
 }
 
+export function isHttpsRequest(request: NextRequest) {
+  if (request.nextUrl.protocol === "https:") return true;
+  const proto = request.headers.get("x-forwarded-proto")?.split(",")[0]?.trim().toLowerCase();
+  return proto === "https";
+}
+
+function applySecurityHeaders(request: NextRequest, response: NextResponse, nonce: string) {
+  for (const header of securityHeaders(process.env.NODE_ENV, { nonce, https: isHttpsRequest(request) })) {
+    response.headers.set(header.key, header.value);
+  }
+  return response;
+}
+
+function createNonce() {
+  return Buffer.from(crypto.randomUUID()).toString("base64");
+}
+
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
+  const nonce = createNonce();
   const isProtected = protectedPaths.some((path) => pathname === path || pathname.startsWith(`${path}/`));
   const isPublicAdminRoute = publicAdminRoutes.has(pathname);
   const sessionCookie = request.cookies.get("authjs.session-token") ?? request.cookies.get("__Secure-authjs.session-token");
   if (isProtected && !isPublicAdminRoute && !sessionCookie) {
     if (pathname.startsWith("/api/admin")) {
-      return NextResponse.json({ error: "Authentification administrative requise." }, { status: 401 });
+      return applySecurityHeaders(request, NextResponse.json({ error: "Authentification administrative requise." }, { status: 401 }), nonce);
     }
     const login = pathname.startsWith("/admin") ? "/admin/login" : "/login";
     const redirectUrl = request.nextUrl.clone();
@@ -37,13 +56,15 @@ export function proxy(request: NextRequest) {
     redirectUrl.pathname = login;
     redirectUrl.search = "";
     redirectUrl.searchParams.set("next", pathname);
-    return NextResponse.redirect(redirectUrl);
+    return applySecurityHeaders(request, NextResponse.redirect(redirectUrl), nonce);
   }
-  const response = NextResponse.next();
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.set("x-nonce", nonce);
+  const response = NextResponse.next({ request: { headers: requestHeaders } });
   response.headers.set("X-Robots-Tag", pathname.startsWith("/admin") ? "noindex, nofollow" : "index, follow");
-  return response;
+  return applySecurityHeaders(request, response, nonce);
 }
 
 export const config = {
-  matcher: ["/dashboard", "/dashboard/:path*", "/admin", "/admin/:path*", "/university", "/university/:path*", "/api/admin/:path*"],
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)"],
 };
