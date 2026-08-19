@@ -1,5 +1,4 @@
 import { createClient } from "redis";
-import { db } from "@/lib/db/client";
 
 const DEFAULT_TIMEOUT_MS = 2_000;
 
@@ -27,8 +26,13 @@ async function withTimeout<T>(operation: Promise<T>, timeoutMs: number) {
   }
 }
 
+async function defaultDatabaseQuery() {
+  const { db } = await import("@/lib/db/client");
+  return db.$queryRaw`SELECT 1`;
+}
+
 export async function checkDatabaseReadiness(
-  query: () => Promise<unknown> = () => db.$queryRaw`SELECT 1`,
+  query: () => Promise<unknown> = defaultDatabaseQuery,
   timeoutMs = DEFAULT_TIMEOUT_MS,
 ) {
   try {

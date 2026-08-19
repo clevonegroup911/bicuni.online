@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { checkDatabaseReadiness, checkRedisReadiness, readinessReport, redisRequiredForReadiness } from "./checks";
 
 afterEach(() => {
+  vi.useRealTimers();
   vi.unstubAllEnvs();
   delete process.env.REDIS_URL;
 });
@@ -18,8 +19,10 @@ describe("checkDatabaseReadiness", () => {
   });
 
   it("borne le temps de la vérification", async () => {
-    await expect(checkDatabaseReadiness(() => new Promise(() => undefined), 20)).resolves.toBe(false);
-  }, 1000);
+    const started = Date.now();
+    await expect(checkDatabaseReadiness(() => new Promise(() => undefined), 50)).resolves.toBe(false);
+    expect(Date.now() - started).toBeLessThan(1500);
+  }, 5000);
 });
 
 describe("checkRedisReadiness", () => {
