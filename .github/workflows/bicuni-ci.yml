@@ -20,8 +20,6 @@ jobs:
     timeout-minutes: 30
     env:
       DATABASE_URL: postgresql://bicuni:static-ci-password@127.0.0.1:5432/bicuni?schema=public
-      PUBLIC_APP_URL: http://127.0.0.1:3000
-      AUTH_URL: http://127.0.0.1:3000
 
     steps:
       - name: Checkout
@@ -53,9 +51,18 @@ jobs:
 
       - name: Build
         run: npm run build
+        env:
+          PUBLIC_APP_URL: http://127.0.0.1:3000
+          AUTH_URL: http://127.0.0.1:3000
 
       - name: Verify generated files and formatting
-        run: git diff --check && git diff --exit-code
+        run: |
+          git diff --check
+          if ! git diff --exit-code; then
+            echo "::error::Tracked files changed during CI. next-env.d.ts and tsconfig.json must remain stable after build."
+            git status --short
+            exit 1
+          fi
 
   secret-detection:
     runs-on: ubuntu-latest
