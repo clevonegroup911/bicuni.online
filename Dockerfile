@@ -1,19 +1,24 @@
 ARG NODE_IMAGE=node:22-bookworm-slim@sha256:d649c27dae7ba0137b3cef5dd75baa422c08dc3d9e3fc0c23dfb172dc3cc6436
 
-FROM ${NODE_IMAGE} AS deps
+FROM ${NODE_IMAGE} AS base
+RUN apt-get update \
+  && apt-get install --yes --no-install-recommends ca-certificates openssl \
+  && rm -rf /var/lib/apt/lists/*
+
+FROM base AS deps
 WORKDIR /app
 ENV PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
 COPY package.json package-lock.json ./
 RUN npm ci --no-audit --no-fund
 
-FROM ${NODE_IMAGE} AS builder
+FROM base AS builder
 WORKDIR /app
 ENV NEXT_TELEMETRY_DISABLED=1
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 RUN npx prisma generate && npm run build
 
-FROM ${NODE_IMAGE} AS runner
+FROM base AS runner
 WORKDIR /app
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
@@ -34,7 +39,7 @@ CMD ["node", "server.js"]
 
 # Image opérationnelle distincte pour le Job de migration et le worker de recherche.
 # Elle n'est jamais utilisée comme service web permanent.
-FROM ${NODE_IMAGE} AS operations
+FROM base AS operations
 WORKDIR /app
 ENV NODE_ENV=production
 RUN rm -rf /usr/local/lib/node_modules/npm /usr/local/lib/node_modules/corepack /opt/yarn-* \
