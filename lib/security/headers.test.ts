@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { contentSecurityPolicy, securityHeaders, shouldSendHsts } from "./headers";
+import { contentSecurityPolicy, nextRendererCspHeaders, securityHeaders, shouldSendHsts } from "./headers";
 
 const originalOrigins = {
   publicAppUrl: process.env.PUBLIC_APP_URL,
@@ -54,6 +54,14 @@ describe("security headers", () => {
     delete process.env.AUTH_URL;
     process.env.APP_URL = "not-a-url";
     expect(contentSecurityPolicy("production", "test-nonce")).not.toContain("upgrade-insecure-requests");
+  });
+
+  it("expose la CSP sur les en-têtes de requête pour que Next.js applique la nonce", () => {
+    const headers = nextRendererCspHeaders("test-nonce", "production");
+    expect(headers["x-nonce"]).toBe("test-nonce");
+    expect(headers["Content-Security-Policy"]).toContain("'nonce-test-nonce'");
+    expect(headers["Content-Security-Policy"]).toContain("strict-dynamic");
+    expect(headers["Content-Security-Policy"]).not.toMatch(/script-src[^;]*unsafe-inline/);
   });
 
   it("ajoute HSTS uniquement en production HTTPS", () => {

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { securityHeaders } from "@/lib/security/headers";
+import { nextRendererCspHeaders, securityHeaders } from "@/lib/security/headers";
 
 const protectedPaths = ["/dashboard", "/admin", "/university", "/api/admin"];
 const publicAdminRoutes = new Set(["/admin/login", "/admin/denied"]);
@@ -59,7 +59,9 @@ export function proxy(request: NextRequest) {
     return applySecurityHeaders(request, NextResponse.redirect(redirectUrl), nonce);
   }
   const requestHeaders = new Headers(request.headers);
-  requestHeaders.set("x-nonce", nonce);
+  for (const [key, value] of Object.entries(nextRendererCspHeaders(nonce))) {
+    requestHeaders.set(key, value);
+  }
   const response = NextResponse.next({ request: { headers: requestHeaders } });
   response.headers.set("X-Robots-Tag", pathname.startsWith("/admin") ? "noindex, nofollow" : "index, follow");
   return applySecurityHeaders(request, response, nonce);

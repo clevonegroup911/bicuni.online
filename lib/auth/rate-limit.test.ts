@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { clientIpFromForwardedFor, consumeAuthAttempt, RateLimitUnavailableError, rateLimitRedisKey, requestIdentity } from "./rate-limit";
+import { clientIpFromForwardedFor, consumeAuthAttempt, denyIfRateLimited, RateLimitUnavailableError, rateLimitRedisKey, requestIdentity } from "./rate-limit";
 
 afterEach(() => {
   vi.unstubAllEnvs();
@@ -28,6 +28,14 @@ describe("consumeAuthAttempt", () => {
     vi.stubEnv("NODE_ENV", "production");
     delete process.env.REDIS_URL;
     await expect(consumeAuthAttempt(`production:${crypto.randomUUID()}`, 8, 60_000)).rejects.toBeInstanceOf(RateLimitUnavailableError);
+  });
+
+  it("répond 503 lorsque Redis requis est indisponible", async () => {
+    vi.stubEnv("NODE_ENV", "production");
+    delete process.env.REDIS_URL;
+    const response = await denyIfRateLimited(`production:${crypto.randomUUID()}`);
+    expect(response?.status).toBe(503);
+    await expect(response?.json()).resolves.toEqual({ error: "Service temporairement indisponible." });
   });
 });
 

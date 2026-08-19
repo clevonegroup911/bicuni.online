@@ -63,6 +63,13 @@ export function contentSecurityPolicy(environment = process.env.NODE_ENV, nonce?
   return directives.join("; ");
 }
 
+export function nextRendererCspHeaders(nonce: string, environment = process.env.NODE_ENV) {
+  return {
+    "x-nonce": nonce,
+    "Content-Security-Policy": contentSecurityPolicy(environment, nonce),
+  } as const;
+}
+
 export function staticSecurityHeaders() {
   return [
     { key: "X-Content-Type-Options", value: "nosniff" },
