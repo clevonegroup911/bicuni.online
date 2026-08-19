@@ -24,7 +24,10 @@ afterEach(() => {
 
 describe("antivirusScanner", () => {
   it("transmet une référence GCS versionnée sans URL publique", async () => {
-    const fetchMock = vi.fn(async (_url: string | URL | Request, init?: RequestInit) => cleanResponse());
+    const fetchMock = vi.fn(async (...args: [string | URL | Request, RequestInit?]) => {
+      expect(String(args[0])).toBe("https://scanner.example/scan");
+      return cleanResponse();
+    });
     vi.stubGlobal("fetch", fetchMock);
 
     await expect(antivirusScanner().scan(sample)).resolves.toMatchObject({ verdict: "clean", engine: "test-engine" });
