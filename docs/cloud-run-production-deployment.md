@@ -23,7 +23,8 @@ procédure ne demande jamais d’afficher leurs valeurs.
 - Cloud SQL PostgreSQL : état transactionnel et outbox de recherche;
 - Redis managé : rate limiting distribué obligatoire en production et cache;
 - Meilisearch : service privé séparé, accessible seulement par le web/worker;
-- GCS privé : objets documentaires, URLs V4 signées et métadonnée SHA-256 signée;
+- GCS privé : objets documentaires, URLs V4 signées et SHA-256 recalculé par le serveur;
+- scanner antivirus séparé : verdict serveur obligatoire avant tout état `CLEAN`;
 - Resend et Stripe : APIs externes, secrets dans Secret Manager et tests sandbox
   obligatoires en staging.
 
@@ -349,6 +350,7 @@ basculé), vérifier au minimum :
 6. `GET /admin/dashboard` — accessible uniquement après authentification admin
 7. inscription/réinitialisation avec Resend staging, upload GCS privé, recherche
    Meilisearch et checkout/webhook Stripe en sandbox lorsque ces modules sont actifs
+8. confirmation qu’un scanner absent ou indisponible conserve l’upload en `PENDING`
 
 Exemple (remplacer `CANDIDATE_URL`) :
 

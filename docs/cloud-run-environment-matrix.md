@@ -22,12 +22,14 @@ comme validée au démarrage.
 | `REDIS_KEY_PREFIX` | non | R web par environnement | rate limiting | configuration | caractères autorisés et longueur normalisés |
 | `REDIS_CONNECT_TIMEOUT_MS` | non | O web | client Redis | configuration | entier positif, repli 750 ms |
 | `REDIS_COMMAND_TIMEOUT_MS` | non | O web | client Redis | configuration | entier positif, repli 500 ms |
-| `TRUSTED_PROXY_HOPS` | non | R web | identité réseau et audit | configuration | entier >= 0; défaut production 1 |
+| `TRUSTED_PROXY_STRATEGY` | non | R web | identité réseau et audit | configuration | `cloud-run` en staging/production, `loopback` en local; valeurs inconnues refusées au profit du défaut sûr |
 | `GOOGLE_CLOUD_PROJECT` | non | C web si documents privés | SDK GCS | configuration | SDK; contrôle au démarrage à ajouter |
 | `GCS_BUCKET` | non | C web si documents privés | stockage documents | configuration | présence au premier usage |
 | `GCS_PUBLIC_ORIGIN` | non | O web | CSP | configuration | origine HTTPS uniquement, sinon ignorée |
 | `DOCUMENT_MAX_UPLOAD_BYTES` | non | R web | validation serveur upload | configuration | entier positif à valider au démarrage; valeur invalide est actuellement dangereuse |
 | `NEXT_PUBLIC_DOCUMENT_MAX_UPLOAD_BYTES` | non | R build/web | UI upload | configuration de build | public; doit égaler la limite serveur |
+| `ANTIVIRUS_SCANNER_URL` | non | R web si validation de fichiers activée | pipeline d’ingestion | configuration | HTTPS ou loopback HTTP; absence conserve les fichiers en `PENDING` |
+| `ANTIVIRUS_SCANNER_TIMEOUT_MS` | non | O web | scanner antivirus | configuration | conversion numérique; défaut borné à 4 s |
 | `MEILISEARCH_HOST` | non | R worker, C web | recherche | configuration | présence au premier usage; HTTPS/réseau privé à contrôler |
 | `MEILISEARCH_MASTER_KEY` | oui | R worker | indexation Meilisearch | Secret Manager | présence au premier usage |
 | `MEILISEARCH_SEARCH_KEY` | oui | C web | recherche restreinte future | Secret Manager | non consommée directement dans l’état actuel |
@@ -54,9 +56,11 @@ comme validée au démarrage.
    les valeurs ni les payloads des secrets.
 2. Vérifier que chaque secret référence une version précise et que le compte de
    service n’a accès qu’aux secrets de son rôle.
-3. Refuser la promotion si `REDIS_URL`, `TRUSTED_PROXY_HOPS`, les limites upload
+3. Refuser la promotion si `REDIS_URL`, `TRUSTED_PROXY_STRATEGY`, les limites upload
    ou l’origine publique ne sont pas cohérents avec l’environnement.
 4. Exécuter le smoke test fonctionnel de chaque intégration conditionnellement
    activée. Une simple présence de variable ne prouve pas son fonctionnement.
-5. Vérifier la configuration CORS du bucket GCS pour `PUT`, `Content-Type` et
-   `x-goog-meta-sha256`; ne jamais élargir l’origine à `*` en production.
+5. Vérifier la configuration CORS du bucket GCS pour `PUT` et `Content-Type`;
+   ne jamais élargir l’origine à `*` en production.
+6. Vérifier qu’un scanner indisponible ou non configuré laisse le fichier en
+   `PENDING`; seul un verdict réel `clean` peut produire l’état `CLEAN`.

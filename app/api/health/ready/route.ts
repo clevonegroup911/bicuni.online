@@ -1,1 +1,7 @@
-export { dynamic, GET } from "@/app/health/ready/route";
+import { readyResponse } from "@/lib/health/http";
+
+export const dynamic = "force-dynamic";
+
+export async function GET() {
+  return readyResponse();
+}
