@@ -31,6 +31,11 @@ procédure ne demande jamais d’afficher leurs valeurs.
 Le service web doit rester stateless. Une panne Redis bloque les opérations
 soumises au rate limiting au lieu de revenir à un compteur local par instance.
 
+Les images utilisent `node:22-bookworm-slim` (glibc) par digest
+multiarchitecture. Next.js choisit ses paquets SWC optionnels selon la plateforme;
+aucun paquet SWC amd64 n’est une dépendance directe du projet. Le runner standalone
+trace explicitement le client et le moteur Prisma sans copier tout `node_modules`.
+
 ## Contexte production confirmé
 
 | Élément | Valeur |
@@ -309,6 +314,9 @@ connexion PostgreSQL, et la sonde de vivacité sur `/api/health/live`. Lorsque l
 readiness probe Cloud Run est activée pour le projet, utiliser également
 `/api/health/ready`. Cette route répond `503` si Cloud SQL est indisponible. Les
 deux routes sont sans cache et ne renvoient aucun détail de connexion.
+Les anciens chemins `/health/live` et `/health/ready` sont uniquement des alias de
+compatibilité; toutes les procédures et sondes nouvelles utilisent les chemins
+canoniques `/api/health/live` et `/api/health/ready`.
 
 Notes :
 

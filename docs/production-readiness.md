@@ -6,7 +6,7 @@
 
 ## Sondes HTTP
 
-`GET /health/live` confirme uniquement que le processus répond (`200`, `{ "status": "ok", "check": "live" }`). `GET /health/ready` vérifie PostgreSQL et, en production ou lorsque `REDIS_URL` est défini, Redis, avec un délai borné. Aucun secret n’est renvoyé. Utiliser `/health/live` comme sonde Cloud Run de vivacité.
+`GET /api/health/live` confirme uniquement que le processus répond (`200`, `{ "status": "ok", "check": "live" }`). `GET /api/health/ready` vérifie PostgreSQL et, en production ou lorsque `REDIS_URL` est défini, Redis, avec un délai borné. Aucun secret n’est renvoyé. Ces routes `/api/health/*` sont les chemins canoniques des sondes Cloud Run. `/health/live` et `/health/ready` restent uniquement des alias de compatibilité.
 
 ## Next.js 16, `tsc --showConfig` et `next-env.d.ts`
 
@@ -24,7 +24,7 @@ Les polices utilisent une pile système locale : le build ne télécharge plus I
 
 ## Upload et analyse antivirus
 
-La confirmation d’upload recalcule taille et SHA-256 côté serveur. `isUploaded=true` envoyé par le client est ignoré. Les états sont `PENDING` / `SCANNING` / `CLEAN` / `REJECTED`. Publication, catalogue public et téléchargement public exigent `CLEAN`. Sans `ANTIVIRUS_SCANNER_URL`, le scanner non configuré renvoie `unavailable` (jamais `clean`); le fichier reste `PENDING`. Ne pas simuler un verdict propre. Les fichiers existants migrés restent `PENDING` jusqu’à une analyse réelle.
+La confirmation d’upload recalcule taille et SHA-256 côté serveur. `isUploaded=true` envoyé par le client est ignoré. Les états sont `PENDING` / `SCANNING` / `CLEAN` / `REJECTED`. Publication, catalogue public et téléchargement public exigent `CLEAN`. Le scanner reçoit le bucket privé, l’objectKey, la génération GCS disponible, le checksum serveur, la taille et le MIME; aucune URL publique permanente n’est transmise. En production, `ANTIVIRUS_SCANNER_AUTHORIZATION` est obligatoire. Sans endpoint ou authentification, sur timeout, réponse invalide, verdict ambigu ou checksum divergent, le résultat reste `unavailable` et le fichier `PENDING`, jamais `CLEAN`. Les fichiers existants migrés restent `PENDING` jusqu’à une analyse réelle.
 
 ## Email
 

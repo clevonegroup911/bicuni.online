@@ -29,6 +29,7 @@ comme validée au démarrage.
 | `DOCUMENT_MAX_UPLOAD_BYTES` | non | R web | validation serveur upload | configuration | entier positif à valider au démarrage; valeur invalide est actuellement dangereuse |
 | `NEXT_PUBLIC_DOCUMENT_MAX_UPLOAD_BYTES` | non | R build/web | UI upload | configuration de build | public; doit égaler la limite serveur |
 | `ANTIVIRUS_SCANNER_URL` | non | R web si validation de fichiers activée | pipeline d’ingestion | configuration | HTTPS ou loopback HTTP; absence conserve les fichiers en `PENDING` |
+| `ANTIVIRUS_SCANNER_AUTHORIZATION` | oui | R web avec scanner en production | client scanner HTTP | Secret Manager | injecté comme `Authorization`; absence/invalidité rend le scanner indisponible |
 | `ANTIVIRUS_SCANNER_TIMEOUT_MS` | non | O web | scanner antivirus | configuration | conversion numérique; défaut borné à 4 s |
 | `MEILISEARCH_HOST` | non | R worker, C web | recherche | configuration | présence au premier usage; HTTPS/réseau privé à contrôler |
 | `MEILISEARCH_MASTER_KEY` | oui | R worker | indexation Meilisearch | Secret Manager | présence au premier usage |
@@ -64,3 +65,5 @@ comme validée au démarrage.
    ne jamais élargir l’origine à `*` en production.
 6. Vérifier qu’un scanner indisponible ou non configuré laisse le fichier en
    `PENDING`; seul un verdict réel `clean` peut produire l’état `CLEAN`.
+7. Vérifier que le scanner authentifié peut lire exactement la génération GCS
+   référencée, sans URL publique permanente.
