@@ -10,6 +10,8 @@ const password = z.string()
 export const credentialsSchema = z.object({
   email: z.string().trim().email().max(254).transform((value) => value.toLowerCase()),
   password: z.string().min(1).max(128),
+  totp: z.string().max(16).optional(),
+  recoveryCode: z.string().max(32).optional(),
 });
 
 export const registerSchema = z.object({

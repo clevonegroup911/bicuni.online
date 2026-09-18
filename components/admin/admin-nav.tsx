@@ -10,12 +10,14 @@ import {
   FileCheck2,
   FileText,
   Fingerprint,
+  GitCompareArrows,
   ReceiptText,
   TicketPercent,
   Undo2,
   LayoutDashboard,
   MonitorCog,
   Settings,
+  ShieldCheck,
   Users,
   WalletCards,
 } from "lucide-react";
@@ -33,6 +35,8 @@ const navigation: { label: string; href: string; icon: typeof LayoutDashboard; p
   { label: "PID BICUNI", href: "/admin/pids", icon: Fingerprint, permission: "admin:pids:read" },
   { label: "Abonnements", href: "/admin/subscriptions", icon: CreditCard, permission: "admin:audit:read" },
   { label: "Transactions", href: "/admin/payments", icon: WalletCards, permission: "admin:audit:read" },
+  { label: "Rapprochement", href: "/admin/reconciliation", icon: GitCompareArrows, permission: "admin:payments:read" },
+  { label: "Taux USD/CDF", href: "/admin/fx", icon: WalletCards, permission: "admin:payments:read" },
   { label: "Factures", href: "/admin/invoices", icon: ReceiptText, permission: "admin:audit:read" },
   { label: "Coupons", href: "/admin/coupons", icon: TicketPercent, permission: "admin:audit:read" },
   { label: "Remboursements", href: "/admin/refunds", icon: Undo2, permission: "admin:audit:read" },
@@ -42,6 +46,7 @@ const navigation: { label: string; href: string; icon: typeof LayoutDashboard; p
   { label: "Sauvegardes", href: "/admin/backups", icon: DatabaseBackup },
   { label: "Monitoring", href: "/admin/monitoring", icon: MonitorCog },
   { label: "Paramètres", href: "/admin/settings", icon: Settings },
+  { label: "Sécurité MFA", href: "/admin/security", icon: ShieldCheck, permission: "admin:payments:confirm" },
 ];
 
 export function AdminNav({ role }: { role: Role }) {

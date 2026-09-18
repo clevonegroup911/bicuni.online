@@ -13,7 +13,7 @@ export default async function AdminRefundsPage() {
         <header className="admin-title">
           <span className="eyebrow">Facturation</span>
           <h1>Remboursements</h1>
-          <p>Interface préparée. Aucune demande, approbation ou rejet n’est possible sans back-end réel.</p>
+          <p>Les remboursements CLEVONE se traitent depuis le dossier de rapprochement, avec motif et journal d’audit. Stripe n’a pas encore de moteur de remboursement branché.</p>
         </header>
         <RefundBoard configured={REFUND_API_CONTRACT.configured} canReview={false} />
       </div>

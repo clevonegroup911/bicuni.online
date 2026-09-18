@@ -20,6 +20,8 @@ export function AdminLoginForm() {
       const result = await signIn("credentials", {
         email: form.get("email"),
         password: form.get("password"),
+        totp: form.get("totp"),
+        recoveryCode: form.get("recoveryCode"),
         redirect: false,
       });
       if (result?.error) {
@@ -50,6 +52,12 @@ export function AdminLoginForm() {
       </Field>
       <Field id="admin-password" label="Mot de passe">
         <input id="admin-password" className="input" type="password" name="password" autoComplete="current-password" required />
+      </Field>
+      <Field id="admin-totp" label="Code MFA (si déjà activé)">
+        <input id="admin-totp" className="input" name="totp" inputMode="numeric" autoComplete="one-time-code" maxLength={6} />
+      </Field>
+      <Field id="admin-recovery" label="Code de récupération (optionnel)">
+        <input id="admin-recovery" className="input" name="recoveryCode" autoComplete="off" maxLength={32} />
       </Field>
       <button className="button" type="submit" disabled={pending} aria-busy={pending}>{pending ? "Vérification…" : "Accéder au Back Office"}</button>
     </form>

@@ -7,3 +7,7 @@ export class AuthRateLimitedError extends CredentialsSignin {
 export class AuthTemporarilyUnavailableError extends CredentialsSignin {
   code = "temporarily_unavailable";
 }
+
+export class AuthMfaRequiredError extends CredentialsSignin {
+  code = "mfa_required";
+}
