@@ -14,6 +14,11 @@ describe("retours de connexion", () => {
     expect(signInFailureMessage("rate_limited")).toMatch(/Trop de tentatives/);
   });
 
+  it("signale un challenge MFA sans révéler le compte", () => {
+    expect(signInFailureKind("mfa_required")).toBe("mfa_required");
+    expect(signInFailureMessage("mfa_required")).toMatch(/Code MFA/);
+  });
+
   it("distingue une indisponibilité Redis comme temporaire", () => {
     expect(new AuthTemporarilyUnavailableError().code).toBe("temporarily_unavailable");
     expect(signInFailureKind("temporarily_unavailable")).toBe("temporarily_unavailable");

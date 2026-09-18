@@ -32,5 +32,8 @@ describe("garde API administrative", () => {
     await expect(requireAdminApi("admin:users:manage")).resolves.toMatchObject({ id: "root" });
     const request = new Request("https://bicuni.online/api/admin/users", { headers: { origin: "https://attacker.example" } });
     await expect(requireAdminApi("admin:users:manage", request)).rejects.toMatchObject({ status: 403 });
+    vi.stubEnv("PUBLIC_APP_URL", "https://bicuni.online");
+    const sameOrigin = new Request("https://bicuni.online/api/admin/users", { method: "POST", headers: { origin: "https://bicuni.online" } });
+    await expect(requireAdminApi("admin:users:manage", sameOrigin)).resolves.toMatchObject({ id: "root" });
   });
 });

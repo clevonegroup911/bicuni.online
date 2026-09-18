@@ -14,6 +14,11 @@ describe("RBAC", () => {
     expect(can("INSTITUTION_ADMIN", "admin:pids:read")).toBe(true);
     expect(can("INSTITUTION_ADMIN", "admin:pids:manage")).toBe(false);
     expect(can("MODERATOR", "admin:users:manage")).toBe(false);
+    expect(can("ADMIN", "admin:payments:read")).toBe(true);
+    expect(can("ADMIN", "admin:payments:confirm")).toBe(true);
+    expect(can("MODERATOR", "admin:payments:read")).toBe(true);
+    expect(can("MODERATOR", "admin:payments:confirm")).toBe(false);
+    expect(can("USER", "admin:payments:read")).toBe(false);
     expect(can("ADMIN", "admin:users:read")).toBe(true);
     expect(can("ADMIN", "admin:users:manage")).toBe(false);
     expect(can("SUPER_ADMIN", "admin:users:manage")).toBe(true);
