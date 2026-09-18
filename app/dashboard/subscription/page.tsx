@@ -19,7 +19,13 @@ import {
 
 export const metadata: Metadata = { title: "Abonnement" };
 
-export default async function SubscriptionPage() {
+export default async function SubscriptionPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ checkout?: string }>;
+}) {
+  const params = await searchParams;
+  const checkoutSuccess = params.checkout === "success";
   const user = await requireUser();
   const stripeConfigured = stripeConfiguredFromEnv();
   const [subscription, history, payments, invoices] = await Promise.all([
@@ -49,6 +55,13 @@ export default async function SubscriptionPage() {
         actions={<Link className="button" href="/pricing">Changer de plan</Link>}
       />
       <div className="section-stack">
+        {checkoutSuccess ? (
+          <p role="status" className="form-success">
+            {current
+              ? "Paiement confirmé et abonnement actif."
+              : "Retour du prestataire de paiement reçu. L’activation définitive attend la confirmation webhook vérifiée — actualisez cette page dans quelques instants."}
+          </p>
+        ) : null}
         {current ? (
           <section className="glass card admin-panel">
             <h2>{current.plan.name}</h2>

@@ -1,7 +1,7 @@
 type LogLevel = "info" | "warn" | "error";
 type Metadata = Record<string, unknown>;
 
-const sensitiveKey = /(password|secret|token|authorization|cookie|card|signed.?url|upload.?url|download.?url)/i;
+const sensitiveKey = /(password|secret|token|authorization|cookie|card|signed.?url|upload.?url|download.?url|msisdn|mpesa|totp|iban|accountNumber|rawbank)/i;
 
 function safeValue(key: string, value: unknown): unknown {
   if (sensitiveKey.test(key)) return "[REDACTED]";

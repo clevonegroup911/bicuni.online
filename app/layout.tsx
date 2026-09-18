@@ -9,6 +9,7 @@ import "./public.css";
 import "./accessibility.css";
 import "./search.css";
 import "./admin.css";
+import "./payments.css";
 import { ToastProvider } from "@/components/ui/toast";
 
 export const metadata: Metadata = {

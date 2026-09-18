@@ -47,7 +47,7 @@ export function contentSecurityPolicy(environment = process.env.NODE_ENV, nonce?
     "style-src 'self' 'unsafe-inline'",
     `img-src ${imageSources.join(" ")}`,
     "font-src 'self' data:",
-    "connect-src 'self' https://api.stripe.com",
+    "connect-src 'self' https://api.stripe.com https://storage.googleapis.com",
     `frame-src ${frameSources.join(" ")}`,
     "worker-src 'self' blob:",
     "media-src 'self' blob: https://storage.googleapis.com",

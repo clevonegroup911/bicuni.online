@@ -41,7 +41,7 @@ export function LoginForm({ callbackUrl, verified }: { callbackUrl: string; veri
       eyebrow={<><LockKeyhole size={15} /> Espace sécurisé</>}
       title="Bon retour."
       description="Accédez à votre espace académique BICUNI."
-      footer={<>Nouveau sur BICUNI ? <Link href="/signup" className="auth-link">Créer un compte</Link></>}
+      footer={<>Nouveau sur BICUNI ? <Link href={`/signup?next=${encodeURIComponent(callbackUrl)}`} className="auth-link">Créer un compte</Link></>}
     >
       {verified && <p role="status" className="form-success">Adresse vérifiée. Vous pouvez vous connecter.</p>}
       {error && <p id="login-error" role="alert" className="form-error">{error}</p>}

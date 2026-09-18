@@ -2,13 +2,20 @@ import type { Metadata } from "next";
 import { Check, Crown } from "lucide-react";
 import { GOVERNMENT_PLAN, PLAN_CATALOG, formatPlanPrice } from "@/lib/subscriptions/catalog";
 import { CheckoutButton } from "@/components/subscriptions/checkout-button";
+import { ClevonePayButton } from "@/components/payments/clevone-pay-button";
 import { Breadcrumb } from "@/components/ui/breadcrumb";
 
 export const metadata: Metadata = { title: "Tarifs" };
 
-export default async function Pricing({ searchParams }: { searchParams: Promise<{ required?: string; plan?: string }> }) {
+export default async function Pricing({
+  searchParams,
+}: {
+  searchParams: Promise<{ required?: string; plan?: string; checkout?: string; resume?: string }>;
+}) {
   const params = await searchParams;
   const subscriptionRequired = params.required === "1";
+  const checkoutCanceled = params.checkout === "canceled";
+  const resumeCheckout = params.resume === "1";
   const selectedPlan = PLAN_CATALOG.some((plan) => plan.slug === params.plan) ? params.plan : undefined;
   return (
     <main className="shell">
@@ -21,6 +28,17 @@ export default async function Pricing({ searchParams }: { searchParams: Promise<
         {subscriptionRequired ? (
           <p role="alert" className="form-error pricing-alert">
             Un abonnement actif est nécessaire pour accéder à cet espace.
+          </p>
+        ) : null}
+        {checkoutCanceled ? (
+          <p role="status" className="form-error pricing-alert">
+            Paiement annulé. Aucun abonnement n’a été activé. Vous pouvez réessayer quand vous le souhaitez.
+          </p>
+        ) : null}
+        {selectedPlan ? (
+          <p role="status" className="pricing-note">
+            Plan conservé : {PLAN_CATALOG.find((plan) => plan.slug === selectedPlan)?.name}
+            {resumeCheckout ? ". Reprise automatique du paiement en cours." : "."}
           </p>
         ) : null}
       </header>
@@ -37,7 +55,13 @@ export default async function Pricing({ searchParams }: { searchParams: Promise<
                 <span>/ mois · USD</span>
               </div>
               <p>{plan.description}</p>
-              <CheckoutButton planSlug={plan.slug} planName={plan.name} featured={featured} />
+              <CheckoutButton
+                planSlug={plan.slug}
+                planName={plan.name}
+                featured={featured}
+                autoStart={resumeCheckout && selectedPlan === plan.slug}
+              />
+              <ClevonePayButton planSlug={plan.slug} planName={plan.name} />
               <ul>
                 {plan.features.map((feature) => (
                   <li key={feature}><Check size={16} />{feature}</li>
