@@ -1,0 +1,28 @@
+{
+  "updatedAt": "2026-09-18",
+  "branch": "ai/cursor/BIC-X200-QG-012",
+  "startSha": "c071cd4dbf5f79fa07a35c77e3c17b3172135c31",
+  "tasks": [
+    { "id": "T001", "status": "TERMINÉE", "priority": "P0" },
+    { "id": "T002", "status": "TERMINÉE", "priority": "P0" },
+    { "id": "T003", "status": "TERMINÉE", "priority": "P0" },
+    { "id": "T004", "status": "TERMINÉE", "priority": "P0" },
+    { "id": "T005", "status": "TERMINÉE", "priority": "P0" },
+    { "id": "T006", "status": "TERMINÉE", "priority": "P1" },
+    { "id": "T007", "status": "TERMINÉE", "priority": "P0", "note": "Signature + idempotence P2002 couvertes par tests unitaires" },
+    { "id": "T008", "status": "TERMINÉE", "priority": "P0", "note": "Activation uniquement via webhook checkout.session.completed ou confirmation CLEVONE dual-control" },
+    { "id": "T009", "status": "TERMINÉE", "priority": "P0", "note": "invoice.paid / payment upsert déjà présents" },
+    { "id": "T010", "status": "TERMINÉE", "priority": "P1", "note": "Portal + cancel existants; checkout renvoie portal si abo actif" },
+    { "id": "T011", "status": "TERMINÉE", "priority": "P1" },
+    { "id": "T012", "status": "TERMINÉE", "priority": "P0" },
+    { "id": "T013", "status": "TERMINÉE", "priority": "P0", "note": "hasActiveSubscription vérifié après PAID CLEVONE dans harness local" },
+    { "id": "T014", "status": "TERMINÉE", "priority": "P0" },
+    { "id": "T015", "status": "TERMINÉE", "priority": "P0" },
+    { "id": "T016", "status": "TERMINÉE", "priority": "P1" },
+    { "id": "T017", "status": "TERMINÉE", "priority": "P0" },
+    { "id": "T018", "status": "BLOQUÉE", "priority": "P0", "note": "Secrets staging absents: GCS_BUCKET, ANTIVIRUS_SCANNER_URL, RESEND_API_KEY, EMAIL_FROM, STRIPE_*" },
+    { "id": "T019", "status": "TERMINÉE", "priority": "P0" },
+    { "id": "T020", "status": "TERMINÉE", "priority": "P1" },
+    { "id": "T021", "status": "TERMINÉE", "priority": "P0", "note": "Postgres jetable + parcours CLEVONE local OK; GCS staging réel BLOQUÉ" }
+  ]
+}
