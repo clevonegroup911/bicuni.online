@@ -1,5 +1,38 @@
 # BICUNI AI Handoff
 
+## BIC-X200-PRICING — parcours `/pricing` + checkout (18 septembre 2026)
+
+**Branche :** `ai/cursor/BIC-X200-QG-012`
+**Statut :** READY_FOR_OWNER_APPROVAL (clés Stripe test + Postgres E2E)
+**Commit / push / merge / déploiement :** NON
+
+### Cause du blocage « Redirection… »
+
+1. `CheckoutButton` laissait `pending=true` après 401 (régression `router.replace` sans sortie d’état).
+2. `POST /api/payments/checkout` ne gérait pas Stripe absent / exceptions → états UI trompeurs.
+3. URL de succès `/dashboard` bloquée par `requireActiveSubscriber` avant webhook.
+
+### Corrections
+
+- Bouton : timeout 25s, états explicites, `Réessayer`, `aria-live`, redirection hard login, validation URL Stripe.
+- API checkout : 503 si non configuré, try/catch 502, prix serveur uniquement, portail si abo actif, succès → `/dashboard/subscription?checkout=success`.
+- Login/signup : conservation du plan via `next` + `resume=1`.
+- Tests : `lib/payments/checkout.route.test.ts`, `lib/payments/webhook.route.test.ts`, `e2e/pricing-checkout.spec.ts`.
+
+### Preuves exécutées
+
+- `npm run lint` OK · `npm run typecheck` OK · `npm test` 386/386 · `npm run build` OK
+- E2E pricing desktop : 3 passed (offres/auth redirect, overflow, webhook sans signature), 3 skipped (DB Docker publish locale KO)
+- Stripe live test : NON (aucune `STRIPE_SECRET_KEY` locale)
+
+### Action propriétaire
+
+1. Fournir clés Stripe **test** + webhook secret (pas production).
+2. Rendre PostgreSQL accessible pour E2E authentifiés.
+3. Autoriser commit/PR si validation OK.
+
+---
+
 ## BIC-SEC-002 — contrats back-end Sprint 002
 
 - `GET /api/profile` retourne `{ profile }` pour l’utilisateur authentifié.
