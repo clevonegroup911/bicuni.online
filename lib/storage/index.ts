@@ -131,11 +131,16 @@ class GoogleCloudStorageProvider implements StorageProvider {
 }
 
 export function privateStorageConfigured() {
-  return Boolean(process.env.GCS_BUCKET?.trim() && process.env.GOOGLE_CLOUD_PROJECT?.trim());
+  return Boolean(resolveGcsBucketName() && process.env.GOOGLE_CLOUD_PROJECT?.trim());
+}
+
+/** Cloud Run legacy used GCS_BUCKET_NAME; app expects GCS_BUCKET. Prefer GCS_BUCKET. */
+function resolveGcsBucketName() {
+  return process.env.GCS_BUCKET?.trim() || process.env.GCS_BUCKET_NAME?.trim() || "";
 }
 
 function requiredBucket() {
-  const bucket = process.env.GCS_BUCKET;
-  if (!bucket) throw new Error("GCS_BUCKET n’est pas configuré.");
+  const bucket = resolveGcsBucketName();
+  if (!bucket) throw new Error("GCS_BUCKET n’est pas configuré (alias legacy GCS_BUCKET_NAME accepté).");
   return bucket;
 }

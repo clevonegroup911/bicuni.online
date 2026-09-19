@@ -4,6 +4,7 @@ import { auth } from "@/auth";
 import { db } from "@/lib/db/client";
 import { can, isAdministrativeRole, type Permission } from "@/lib/auth/rbac";
 import { hasActiveSubscription } from "@/lib/subscriptions/service";
+import { hasProductAccess } from "@/lib/oaas/entitlements";
 import { mfaRequiredForConfirm } from "@/lib/payments/clevone/totp";
 
 export async function requireUser() {
@@ -39,6 +40,14 @@ export async function requirePermission(permission: Permission, options?: { allo
 }
 
 export async function requireActiveSubscriber() {
+  const user = await requireUser();
+  if (user.role === "SUPER_ADMIN" || user.role === "GOVERNMENT") return user;
+  if (!await hasProductAccess(user.id)) redirect("/outcomes?required=1");
+  return user;
+}
+
+/** @deprecated Prefer requireActiveSubscriber (abonnement ou mission). */
+export async function requireLegacySubscriber() {
   const user = await requireUser();
   if (user.role === "SUPER_ADMIN" || user.role === "GOVERNMENT") return user;
   if (!await hasActiveSubscription(user.id)) redirect("/pricing?required=1");

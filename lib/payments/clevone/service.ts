@@ -21,6 +21,7 @@ import {
   SIGNED_PROOF_TTL_SECONDS,
   type PaymentIntentStatusId,
 } from "./types";
+import { unlockMissionAfterPayment } from "@/lib/oaas/mission-service";
 
 type Db = PrismaClient;
 type AuditContext = { ipHash: string | null; userAgent: string | null };
@@ -185,6 +186,169 @@ export class ClevonePaymentService {
         input.userId,
         "order_created",
         `Commande ${created.publicRef} créée. Paiement manuel CLEVONE en attente — ce n’est pas une confirmation bancaire.`,
+      );
+      return { publicRef: created.publicRef, reused: false as const };
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+        const replay = await this.db.paymentIntent.findUnique({
+          where: { idempotencyKey: input.idempotencyKey },
+          select: { publicRef: true, userId: true },
+        });
+        if (replay?.userId === input.userId) return { publicRef: replay.publicRef, reused: true as const };
+        throw new ClevonePaymentError("Conflit d’idempotence.", 409, "CONFLICT");
+      }
+      throw error;
+    }
+  }
+
+  /** Checkout OaaS : acompte / jalon mission — n’active pas un abonnement. */
+  async createOutcomeCheckout(input: {
+    userId: string;
+    missionId: string;
+    channel: string;
+    idempotencyKey: string;
+  }) {
+    if (!isPaymentChannel(input.channel)) {
+      throw new ClevonePaymentError("Canal de paiement invalide.", 400, "VALIDATION");
+    }
+    const channel = input.channel;
+    if (!/^[a-zA-Z0-9:_-]{8,128}$/.test(input.idempotencyKey)) {
+      throw new ClevonePaymentError("Clé d’idempotence invalide.", 400, "VALIDATION");
+    }
+
+    const existing = await this.db.paymentIntent.findUnique({
+      where: { idempotencyKey: input.idempotencyKey },
+      select: { publicRef: true, status: true, userId: true, outcomeMissionId: true },
+    });
+    if (existing) {
+      if (existing.userId !== input.userId) throw new ClevonePaymentError("Clé d’idempotence déjà utilisée.", 409, "CONFLICT");
+      return { publicRef: existing.publicRef, reused: true as const };
+    }
+
+    const mission = await this.db.outcomeMission.findUnique({
+      where: { id: input.missionId },
+      include: { contract: true, pack: true, costs: true },
+    });
+    if (!mission || mission.ownerId !== input.userId) {
+      throw new ClevonePaymentError("Mission introuvable.", 404, "VALIDATION");
+    }
+    if (mission.status !== "AWAITING_PAYMENT" && mission.status !== "REVISION_REQUESTED") {
+      throw new ClevonePaymentError("Cette mission n’attend pas de paiement.", 409, "CONFLICT");
+    }
+    if (!mission.contract || mission.contract.status !== "ACCEPTED") {
+      throw new ClevonePaymentError("Le contrat doit être accepté avant paiement.", 409, "CONFLICT");
+    }
+
+    const deposit = mission.costs.find((c) => c.kind === "DEPOSIT" && !c.paidAt);
+    const amountCents = deposit?.amountCents ?? mission.contract.depositCents;
+    if (!Number.isInteger(amountCents) || amountCents <= 0) {
+      throw new ClevonePaymentError("Montant d’acompte invalide.", 400, "VALIDATION");
+    }
+
+    const planSlug = mission.pack?.planSlug ?? "oaas-academic-research";
+    let plan = await this.db.plan.findUnique({ where: { slug: planSlug } });
+    if (!plan) {
+      plan = await this.db.plan.create({
+        data: {
+          slug: planSlug,
+          name: mission.pack?.title ?? "Mission OaaS",
+          priceCents: amountCents,
+          currency: mission.currency,
+          interval: "one_time",
+          features: { oaas: true, packSlug: mission.pack?.slug ?? null },
+          active: true,
+        },
+      });
+    } else if (plan.priceCents !== amountCents) {
+      plan = await this.db.plan.update({
+        where: { id: plan.id },
+        data: { priceCents: amountCents, active: true },
+      });
+    }
+
+    const usdCdfRate = await getActiveUsdCdfRate(this.db);
+    const quote = quoteChannelAmount({ priceCents: amountCents, currency: mission.currency, channel, usdCdfRate });
+
+    try {
+      const created = await this.db.$transaction(async (tx) => {
+        const publicRef = newPublicRef();
+        const now = new Date();
+        const order = await tx.paymentOrder.create({
+          data: {
+            userId: input.userId,
+            planId: plan!.id,
+            outcomeMissionId: mission.id,
+            amountCents: quote.amountCents,
+            currency: quote.currency,
+            status: "OPEN",
+            fxPair: quote.fx?.pair ?? null,
+            fxRateUnits: quote.fx?.rateUnits ?? null,
+            fxSource: quote.fx?.source ?? null,
+            fxEffectiveAt: quote.fx?.effectiveAt ?? null,
+            fxRateId: quote.fx?.rateId ?? null,
+          },
+        });
+        const invoice = await tx.invoice.create({
+          data: {
+            outcomeMissionId: mission.id,
+            provider: providerFromChannel(channel),
+            providerRef: publicRef,
+            number: publicRef,
+            amountDueCents: quote.amountCents,
+            amountPaidCents: 0,
+            currency: quote.currency,
+            status: "open",
+            fxPair: quote.fx?.pair ?? null,
+            fxRateUnits: quote.fx?.rateUnits ?? null,
+            fxSource: quote.fx?.source ?? null,
+            fxEffectiveAt: quote.fx?.effectiveAt ?? null,
+          },
+        });
+        const intent = await tx.paymentIntent.create({
+          data: {
+            publicRef,
+            userId: input.userId,
+            orderId: order.id,
+            planId: plan!.id,
+            outcomeMissionId: mission.id,
+            invoiceId: invoice.id,
+            channel,
+            amountCents: quote.amountCents,
+            currency: quote.currency,
+            destinationAccount: quote.destination.account,
+            fxPair: quote.fx?.pair ?? null,
+            fxRateUnits: quote.fx?.rateUnits ?? null,
+            fxSource: quote.fx?.source ?? null,
+            fxEffectiveAt: quote.fx?.effectiveAt ?? null,
+            fxRateId: quote.fx?.rateId ?? null,
+            status: "AWAITING_PAYMENT",
+            expiresAt: new Date(now.getTime() + INTENT_TTL_MS),
+            idempotencyKey: input.idempotencyKey,
+            retentionUntil: new Date(now.getTime() + PROOF_RETENTION_MS),
+          },
+        });
+        await tx.auditLog.create({
+          data: {
+            actorId: input.userId,
+            action: "CLEVONE_OUTCOME_PAYMENT_INTENT_CREATED",
+            entityType: "PaymentIntent",
+            entityId: intent.id,
+            newValue: {
+              publicRef,
+              channel,
+              amountCents: quote.amountCents,
+              currency: quote.currency,
+              missionId: mission.id,
+            },
+          },
+        });
+        return { publicRef: intent.publicRef, reused: false as const, intentId: intent.id };
+      });
+      await this.notify(
+        created.intentId,
+        input.userId,
+        "order_created",
+        `Acompte mission ${mission.publicRef} — commande ${created.publicRef}. Paiement manuel CLEVONE en attente.`,
       );
       return { publicRef: created.publicRef, reused: false as const };
     } catch (error) {
@@ -568,13 +732,21 @@ export class ClevonePaymentService {
             },
           });
         }
+        if (intent.outcomeMissionId) {
+          await unlockMissionAfterPayment(tx, {
+            missionId: intent.outcomeMissionId,
+            paymentIntentId: intent.id,
+            actorId: input.actorId,
+          });
+        }
         await tx.paymentOrder.update({ where: { id: intent.orderId }, data: { status: "PAID" } });
         await tx.payment.upsert({
           where: { providerRef: intent.publicRef },
-          update: { status: "SUCCEEDED", amountCents: intent.amountCents },
+          update: { status: "SUCCEEDED", amountCents: intent.amountCents, outcomeMissionId: intent.outcomeMissionId },
           create: {
             userId: intent.userId,
             subscriptionId: intent.subscriptionId,
+            outcomeMissionId: intent.outcomeMissionId,
             provider: providerFromChannel(intent.channel as PaymentChannelId),
             providerRef: intent.publicRef,
             amountCents: intent.amountCents,
