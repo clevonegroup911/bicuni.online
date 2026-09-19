@@ -3,6 +3,8 @@ import {
   AGENT_REGISTRY,
   agentAvailableFlag,
   assertAgentCanExecute,
+  formatAgentAvailabilityLine,
+  formatExecutorKindLabel,
   isAgentExecutable,
   STRIPE_OAAS_STATUS,
 } from "@/lib/oaas/agents";
@@ -99,5 +101,18 @@ describe("agent executor honesty", () => {
 
   it("déclare Stripe OaaS non configuré", () => {
     expect(STRIPE_OAAS_STATUS).toBe("ADAPTER_NOT_CONFIGURED");
+  });
+
+  it("expose des libellés d’exécuteur honnêtes pour l’UI", () => {
+    expect(formatExecutorKindLabel("DETERMINISTIC_LOCAL")).toBe("Exécuteur local déterministe");
+    expect(formatExecutorKindLabel("ADAPTER_NOT_CONFIGURED")).toBe("Adaptateur non configuré");
+    expect(formatExecutorKindLabel("DISABLED")).toBe("Fonction désactivée");
+    expect(formatExecutorKindLabel("REAL_EXECUTOR")).toBe("Exécuteur externe réel");
+    expect(formatAgentAvailabilityLine("research-intake", true)).toContain("Exécuteur local déterministe");
+    expect(formatAgentAvailabilityLine("research-intake", true)).toContain("disponible=oui");
+    expect(formatAgentAvailabilityLine("ocr", true)).toContain("Adaptateur non configuré");
+    expect(formatAgentAvailabilityLine("ocr", true)).toContain("disponible=non");
+    expect(formatAgentAvailabilityLine("metadata", false)).toContain("Fonction désactivée");
+    expect(formatAgentAvailabilityLine("metadata", false)).toContain("disponible=non");
   });
 });

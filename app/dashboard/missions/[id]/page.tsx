@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { requireUser } from "@/lib/auth/guards";
 import { db } from "@/lib/db/client";
 import { OutcomeServiceError, getMissionForOwner } from "@/lib/oaas/mission-service";
+import { formatAgentAvailabilityLine } from "@/lib/oaas/agents";
 import { Breadcrumb } from "@/components/ui/breadcrumb";
 import { MissionActions } from "@/components/outcomes/mission-actions";
 
@@ -147,7 +148,7 @@ export default async function MissionDetailPage({
           <ul>
             {mission.agentAssignments.map((a) => (
               <li key={a.id}>
-                {a.agent.name} ({a.agent.key}) — disponible={a.agent.available ? "oui" : "non"} · v{a.agent.version}
+                {a.agent.name} ({a.agent.key}) — {formatAgentAvailabilityLine(a.agent.key, a.agent.available)} · v{a.agent.version}
               </li>
             ))}
           </ul>

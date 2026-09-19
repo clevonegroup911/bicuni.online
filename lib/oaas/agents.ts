@@ -259,6 +259,35 @@ export function agentAvailableFlag(agent: Pick<AgentDefinition, "executorKind">)
   return isAgentExecutable(agent);
 }
 
+/** Libellé UI honnête — jamais « IA active » pour un déterministe ou un adaptateur. */
+export function formatExecutorKindLabel(kind: AgentExecutorKind): string {
+  switch (kind) {
+    case "DETERMINISTIC_LOCAL":
+      return "Exécuteur local déterministe";
+    case "ADAPTER_NOT_CONFIGURED":
+      return "Adaptateur non configuré";
+    case "DISABLED":
+      return "Fonction désactivée";
+    case "REAL_EXECUTOR":
+      return "Exécuteur externe réel";
+    case "STUB_FORBIDDEN":
+      return "Stub interdit";
+    default: {
+      const _exhaustive: never = kind;
+      return _exhaustive;
+    }
+  }
+}
+
+/** Ligne d’affichage mission : type d’exécuteur + disponible aligné sur la vérité registre. */
+export function formatAgentAvailabilityLine(agentKey: string, _dbAvailable: boolean): string {
+  const def = getAgentDefinition(agentKey);
+  const kind = def?.executorKind;
+  const available = def ? agentAvailableFlag(def) : false;
+  const typeLabel = kind ? formatExecutorKindLabel(kind) : "Type d’exécuteur inconnu";
+  return `type=${typeLabel} · disponible=${available ? "oui" : "non"}`;
+}
+
 export function assertAgentCanExecute(agentKey: string): AgentDefinition {
   const agent = getAgentDefinition(agentKey);
   if (!agent) {
