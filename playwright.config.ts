@@ -12,6 +12,8 @@ export default defineConfig({
   use: {
     baseURL: process.env.PLAYWRIGHT_BASE_URL ?? "http://127.0.0.1:3100",
     trace: "retain-on-failure",
+    screenshot: "only-on-failure",
+    video: "off",
   },
   projects: [
     { name: "desktop", use: { ...devices["Desktop Chrome"], channel: "chrome" } },
