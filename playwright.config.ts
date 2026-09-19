@@ -6,14 +6,17 @@ export default defineConfig({
   workers: 1,
   forbidOnly: Boolean(process.env.CI),
   retries: process.env.CI ? 1 : 0,
-  reporter: "list",
+  reporter: [
+    ["list"],
+    ["html", { open: "never", outputFolder: "playwright-report" }],
+  ],
   timeout: 90_000,
   expect: { timeout: 30_000 },
   use: {
     baseURL: process.env.PLAYWRIGHT_BASE_URL ?? "http://127.0.0.1:3100",
     trace: "retain-on-failure",
     screenshot: "only-on-failure",
-    video: "off",
+    video: "retain-on-failure",
   },
   projects: [
     { name: "desktop", use: { ...devices["Desktop Chrome"], channel: "chrome" } },
@@ -23,9 +26,13 @@ export default defineConfig({
   webServer: process.env.PLAYWRIGHT_SKIP_WEBSERVER
     ? undefined
     : {
-        command: "npm run dev -- --hostname 127.0.0.1 --port 3100",
-        url: "http://127.0.0.1:3100",
-        env: { AUTH_URL: "http://127.0.0.1:3100", AUTH_TRUST_HOST: "true" },
+        command: "npm run start -- --hostname 127.0.0.1 --port 3100",
+        url: "http://127.0.0.1:3100/api/health/live",
+        env: {
+          AUTH_URL: "http://127.0.0.1:3100",
+          AUTH_TRUST_HOST: "true",
+          PUBLIC_APP_URL: "http://127.0.0.1:3100",
+        },
         reuseExistingServer: !process.env.CI,
         timeout: 120_000,
       },

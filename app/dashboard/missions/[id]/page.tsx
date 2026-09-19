@@ -148,7 +148,7 @@ export default async function MissionDetailPage({
           <ul>
             {mission.agentAssignments.map((a) => (
               <li key={a.id}>
-                {a.agent.name} ({a.agent.key}) — {formatAgentAvailabilityLine(a.agent.key, a.agent.available)} · v{a.agent.version}
+                {a.agent.name} ({a.agent.key}) — {formatAgentAvailabilityLine(a.agent.key)} · v{a.agent.version}
               </li>
             ))}
           </ul>

@@ -280,7 +280,7 @@ export function formatExecutorKindLabel(kind: AgentExecutorKind): string {
 }
 
 /** Ligne d’affichage mission : type d’exécuteur + disponible aligné sur la vérité registre. */
-export function formatAgentAvailabilityLine(agentKey: string, _dbAvailable: boolean): string {
+export function formatAgentAvailabilityLine(agentKey: string): string {
   const def = getAgentDefinition(agentKey);
   const kind = def?.executorKind;
   const available = def ? agentAvailableFlag(def) : false;

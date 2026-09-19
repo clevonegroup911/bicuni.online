@@ -108,11 +108,12 @@ describe("agent executor honesty", () => {
     expect(formatExecutorKindLabel("ADAPTER_NOT_CONFIGURED")).toBe("Adaptateur non configuré");
     expect(formatExecutorKindLabel("DISABLED")).toBe("Fonction désactivée");
     expect(formatExecutorKindLabel("REAL_EXECUTOR")).toBe("Exécuteur externe réel");
-    expect(formatAgentAvailabilityLine("research-intake", true)).toContain("Exécuteur local déterministe");
-    expect(formatAgentAvailabilityLine("research-intake", true)).toContain("disponible=oui");
-    expect(formatAgentAvailabilityLine("ocr", true)).toContain("Adaptateur non configuré");
-    expect(formatAgentAvailabilityLine("ocr", true)).toContain("disponible=non");
-    expect(formatAgentAvailabilityLine("metadata", false)).toContain("Fonction désactivée");
-    expect(formatAgentAvailabilityLine("metadata", false)).toContain("disponible=non");
+    expect(formatAgentAvailabilityLine("research-intake")).toContain("Exécuteur local déterministe");
+    expect(formatAgentAvailabilityLine("research-intake")).toContain("disponible=oui");
+    expect(formatAgentAvailabilityLine("ocr")).toContain("Adaptateur non configuré");
+    expect(formatAgentAvailabilityLine("ocr")).toContain("disponible=non");
+    expect(formatAgentAvailabilityLine("metadata")).toContain("Fonction désactivée");
+    expect(formatAgentAvailabilityLine("metadata")).toContain("disponible=non");
+    expect(formatExecutorKindLabel("REAL_EXECUTOR")).toBe("Exécuteur externe réel");
   });
 });
