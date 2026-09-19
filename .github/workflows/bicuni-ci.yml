@@ -67,7 +67,12 @@ jobs:
         run: npx prisma migrate deploy
 
       - name: Seed OaaS TEST catalogue
-        run: npm run db:seed:oaas
+        run: |
+          if [ -f scripts/seed-oaas.mjs ]; then
+            npm run db:seed:oaas
+          else
+            echo "Seed OaaS absent sur cette branche — ignoré."
+          fi
 
       - name: Lint
         run: npm run lint
@@ -82,9 +87,11 @@ jobs:
         run: npm run build
 
       - name: Install Playwright Chromium
+        if: hashFiles('e2e/oaas-academic-research.spec.ts') != ''
         run: npx playwright install --with-deps chromium
 
       - name: Start app for E2E
+        if: hashFiles('e2e/oaas-academic-research.spec.ts') != ''
         run: |
           npm run start -- --hostname 127.0.0.1 --port 3100 &
           echo $! > /tmp/bicuni-e2e.pid
@@ -98,12 +105,13 @@ jobs:
           exit 1
 
       - name: E2E OaaS
+        if: hashFiles('e2e/oaas-academic-research.spec.ts') != ''
         run: npx playwright test e2e/oaas-academic-research.spec.ts --project=desktop
         env:
           PLAYWRIGHT_BASE_URL: http://127.0.0.1:3100
 
       - name: Upload Playwright artifacts
-        if: failure()
+        if: failure() && hashFiles('e2e/oaas-academic-research.spec.ts') != ''
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: playwright-oaas-${{ github.sha }}
@@ -113,7 +121,7 @@ jobs:
           if-no-files-found: ignore
 
       - name: Stop app
-        if: always()
+        if: always() && hashFiles('e2e/oaas-academic-research.spec.ts') != ''
         run: |
           if [ -f /tmp/bicuni-e2e.pid ]; then kill "$(cat /tmp/bicuni-e2e.pid)" || true; fi
 
