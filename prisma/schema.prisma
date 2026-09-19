@@ -64,6 +64,7 @@ enum PaymentProvider {
   MPESA
   AIRTEL_MONEY
   ORANGE_MONEY
+  RAWBANK
 }
 
 enum InstitutionType {
@@ -111,6 +112,21 @@ model User {
   documentEvents      DocumentHistory[]
   persistentIdentifiers PersistentIdentifier[] @relation("PidCreator")
   pidTargetChanges      PersistentIdentifierTargetHistory[] @relation("PidChanger")
+  mfaEnabled            Boolean              @default(false)
+  mfaSecretEnc          String?
+  mfaEnrolledAt         DateTime?
+  mfaRecoveryHashes     String[]             @default([])
+  mfaFailedAttempts     Int                  @default(0)
+  mfaLockedUntil        DateTime?
+  mfaLastVerifiedAt     DateTime?
+  paymentOrders         PaymentOrder[]
+  paymentIntents        PaymentIntent[]
+  reconciliationDecisions ReconciliationDecision[]
+  paymentNotifications  PaymentNotification[]
+  paymentRefundsRequested PaymentRefund[] @relation("RefundRequester")
+  paymentRefundsReviewed  PaymentRefund[] @relation("RefundReviewer")
+  fxRatesEntered        FxRate[]             @relation("FxEnteredBy")
+  fxRatesApproved       FxRate[]             @relation("FxApprovedBy")
 
   @@index([role, status, createdAt])
 }
@@ -189,6 +205,8 @@ model Plan {
   createdAt       DateTime       @default(now())
   updatedAt       DateTime       @updatedAt
   subscriptions   Subscription[]
+  paymentOrders   PaymentOrder[]
+  paymentIntents  PaymentIntent[]
 }
 
 model Subscription {
@@ -241,6 +259,10 @@ model Invoice {
   pdfUrl          String?
   periodStart     DateTime?
   periodEnd       DateTime?
+  fxPair          String?
+  fxRateUnits     Int?
+  fxSource        String?
+  fxEffectiveAt   DateTime?
   createdAt       DateTime        @default(now())
   updatedAt       DateTime        @updatedAt
   subscription    Subscription    @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
@@ -513,6 +535,301 @@ model AuditLog {
 
   @@index([entityType, entityId])
   @@index([createdAt])
+}
+
+enum PaymentChannel {
+  MPESA
+  RAWBANK_CDF
+  RAWBANK_USD
+}
+
+enum PaymentIntentStatus {
+  AWAITING_PAYMENT
+  PROOF_SUBMITTED
+  MATCHING
+  PENDING
+  REVIEW_REQUIRED
+  PAID
+  REJECTED
+  EXPIRED
+  REFUNDED
+}
+
+enum PaymentMatchClass {
+  STRONG
+  INCOMPLETE
+  VARIANCE
+  REJECT
+}
+
+enum PaymentRiskLevel {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum ReconciliationAction {
+  PROPOSE_PAID
+  CONFIRM_PAID
+  REJECT
+  CORRECT
+  EXPIRE
+}
+
+enum NotificationChannel {
+  EMAIL
+  SMS
+  WHATSAPP
+}
+
+enum NotificationDeliveryStatus {
+  QUEUED
+  SENT
+  FAILED
+  SKIPPED_UNCONFIGURED
+}
+
+enum PaymentRefundStatus {
+  REQUESTED
+  APPROVED
+  REJECTED
+  PROCESSED
+}
+
+enum FxRateStatus {
+  PENDING_APPROVAL
+  ACTIVE
+  SUPERSEDED
+  REJECTED
+}
+
+model FxRate {
+  id           String       @id @default(cuid())
+  pair         String       @default("USD_CDF")
+  rateUnits    Int
+  source       String
+  effectiveAt  DateTime
+  expiresAt    DateTime?
+  enteredById  String
+  approvedById String?
+  approvedAt   DateTime?
+  status       FxRateStatus @default(PENDING_APPROVAL)
+  createdAt    DateTime     @default(now())
+  enteredBy    User         @relation("FxEnteredBy", fields: [enteredById], references: [id])
+  approvedBy   User?        @relation("FxApprovedBy", fields: [approvedById], references: [id])
+  orders       PaymentOrder[]
+  intents      PaymentIntent[]
+
+  @@index([pair, status, effectiveAt])
+  @@index([pair, approvedAt])
+}
+
+model PaymentOrder {
+  id            String            @id @default(cuid())
+  userId        String
+  planId        String
+  amountCents   Int
+  currency      String
+  status        String            @default("OPEN")
+  fxPair        String?
+  fxRateUnits   Int?
+  fxSource      String?
+  fxEffectiveAt DateTime?
+  fxRateId      String?
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+  user          User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  plan          Plan              @relation(fields: [planId], references: [id])
+  fxRate        FxRate?           @relation(fields: [fxRateId], references: [id], onDelete: SetNull)
+  intents       PaymentIntent[]
+
+  @@index([userId, createdAt])
+}
+
+model PaymentIntent {
+  id                   String                    @id @default(cuid())
+  publicRef            String                    @unique
+  userId               String
+  orderId              String
+  planId               String
+  subscriptionId       String?
+  invoiceId            String?                   @unique
+  channel              PaymentChannel
+  amountCents          Int
+  currency             String
+  destinationAccount   String
+  fxPair               String?
+  fxRateUnits          Int?
+  fxSource             String?
+  fxEffectiveAt        DateTime?
+  fxRateId             String?
+  status               PaymentIntentStatus       @default(AWAITING_PAYMENT)
+  matchClass           PaymentMatchClass?
+  riskLevel            PaymentRiskLevel          @default(MEDIUM)
+  expiresAt            DateTime
+  paidAt               DateTime?
+  proposedPaidById     String?
+  proposedPaidAt       DateTime?
+  providerTxnRef       String?                   @unique
+  idempotencyKey       String                    @unique
+  activatedAt          DateTime?
+  retentionUntil       DateTime
+  createdAt            DateTime                  @default(now())
+  updatedAt            DateTime                  @updatedAt
+  user                 User                      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  order                PaymentOrder              @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  plan                 Plan                      @relation(fields: [planId], references: [id])
+  fxRate               FxRate?                   @relation(fields: [fxRateId], references: [id], onDelete: SetNull)
+  attempts             PaymentAttempt[]
+  proofs               PaymentProof[]
+  decisions            ReconciliationDecision[]
+  transitions          PaymentStateTransition[]
+  providerTransactions ProviderTransaction[]
+  receipt              PaymentReceipt?
+  refunds              PaymentRefund[]
+  notifications        PaymentNotification[]
+
+  @@index([userId, status, createdAt])
+  @@index([status, channel, currency, createdAt])
+  @@index([expiresAt, status])
+}
+
+model PaymentAttempt {
+  id                 String          @id @default(cuid())
+  intentId           String
+  channel            PaymentChannel
+  amountCents        Int
+  currency           String
+  payerName          String
+  payerPhone         String
+  providerTxnRef     String
+  paidAtClient       DateTime
+  destinationAccount String
+  createdAt          DateTime        @default(now())
+  intent             PaymentIntent   @relation(fields: [intentId], references: [id], onDelete: Cascade)
+  proofs             PaymentProof[]
+
+  @@index([intentId, createdAt])
+}
+
+model PaymentProof {
+  id         String         @id @default(cuid())
+  intentId   String
+  attemptId  String
+  objectKey  String
+  fileName   String
+  mimeType   String
+  sizeBytes  Int
+  checksum   String         @default("")
+  scanStatus FileScanStatus @default(PENDING)
+  isUploaded Boolean        @default(false)
+  scannedAt  DateTime?
+  createdAt  DateTime       @default(now())
+  intent     PaymentIntent  @relation(fields: [intentId], references: [id], onDelete: Cascade)
+  attempt    PaymentAttempt @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+
+  @@index([intentId, scanStatus])
+}
+
+model ProviderTransaction {
+  id             String         @id @default(cuid())
+  intentId       String?
+  channel        PaymentChannel
+  providerTxnRef String         @unique
+  amountCents    Int
+  currency       String
+  counterparty   String?
+  occurredAt     DateTime
+  source         String
+  createdAt      DateTime       @default(now())
+  intent         PaymentIntent? @relation(fields: [intentId], references: [id], onDelete: SetNull)
+
+  @@index([channel, occurredAt])
+}
+
+model ReconciliationDecision {
+  id            String               @id @default(cuid())
+  intentId      String
+  actorId       String
+  action        ReconciliationAction
+  fromStatus    PaymentIntentStatus
+  toStatus      PaymentIntentStatus
+  reason        String
+  matchClass    PaymentMatchClass?
+  riskLevel     PaymentRiskLevel?
+  matchSnapshot Json?
+  ipHash        String?
+  userAgent     String?
+  createdAt     DateTime             @default(now())
+  intent        PaymentIntent        @relation(fields: [intentId], references: [id], onDelete: Cascade)
+  actor         User                 @relation(fields: [actorId], references: [id])
+
+  @@index([intentId, createdAt])
+}
+
+model PaymentStateTransition {
+  id         String              @id @default(cuid())
+  intentId   String
+  fromStatus PaymentIntentStatus
+  toStatus   PaymentIntentStatus
+  reason     String
+  actorId    String?
+  metadata   Json?
+  createdAt  DateTime            @default(now())
+  intent     PaymentIntent       @relation(fields: [intentId], references: [id], onDelete: Cascade)
+
+  @@index([intentId, createdAt])
+}
+
+model PaymentReceipt {
+  id           String         @id @default(cuid())
+  publicNumber String         @unique
+  intentId     String         @unique
+  invoiceId    String
+  amountCents  Int
+  currency     String
+  channel      PaymentChannel
+  confirmedAt  DateTime
+  fingerprint  String
+  createdAt    DateTime       @default(now())
+  intent       PaymentIntent  @relation(fields: [intentId], references: [id], onDelete: Restrict)
+}
+
+model PaymentRefund {
+  id             String              @id @default(cuid())
+  intentId       String
+  amountCents    Int
+  currency       String
+  reason         String
+  status         PaymentRefundStatus @default(REQUESTED)
+  requestedById  String
+  reviewedById   String?
+  reviewedAt     DateTime?
+  processedAt    DateTime?
+  idempotencyKey String              @unique
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+  intent         PaymentIntent       @relation(fields: [intentId], references: [id], onDelete: Restrict)
+  requestedBy    User                @relation("RefundRequester", fields: [requestedById], references: [id])
+  reviewedBy     User?               @relation("RefundReviewer", fields: [reviewedById], references: [id])
+
+  @@index([intentId, status])
+}
+
+model PaymentNotification {
+  id                String                     @id @default(cuid())
+  intentId          String
+  userId            String
+  channel           NotificationChannel
+  template          String
+  status            NotificationDeliveryStatus
+  providerMessageId String?
+  error             String?
+  createdAt         DateTime                   @default(now())
+  intent            PaymentIntent              @relation(fields: [intentId], references: [id], onDelete: Cascade)
+  user              User                       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([intentId, createdAt])
 }
 
 enum PersistentIdentifierScheme {

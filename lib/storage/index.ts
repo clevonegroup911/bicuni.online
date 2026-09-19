@@ -19,6 +19,7 @@ export interface StorageProvider {
   delete(objectKey: string): Promise<void>;
   stat(objectKey: string): Promise<{ exists: boolean; sizeBytes?: number; contentType?: string }>;
   digest(objectKey: string): Promise<StoredObjectDigest>;
+  readPrefix(objectKey: string, byteCount: number): Promise<Uint8Array>;
   createThumbnail(objectKey: string, title: string, type: string): Promise<void>;
 }
 
@@ -75,6 +76,24 @@ class GoogleCloudStorageProvider implements StorageProvider {
     };
   }
 
+  async readPrefix(objectKey: string, byteCount: number): Promise<Uint8Array> {
+    const file = this.storage.bucket(this.bucketName).file(objectKey);
+    const [exists] = await file.exists();
+    if (!exists) return new Uint8Array();
+    const chunks: Buffer[] = [];
+    let size = 0;
+    await new Promise<void>((resolve, reject) => {
+      file.createReadStream({ start: 0, end: Math.max(0, byteCount - 1) })
+        .on("data", (chunk: Buffer) => {
+          size += chunk.length;
+          chunks.push(chunk);
+        })
+        .on("error", reject)
+        .on("end", () => resolve());
+    });
+    return Uint8Array.from(Buffer.concat(chunks, size));
+  }
+
   async digest(objectKey: string): Promise<StoredObjectDigest> {
     const file = this.storage.bucket(this.bucketName).file(objectKey);
     const [exists] = await file.exists();
@@ -109,6 +128,10 @@ class GoogleCloudStorageProvider implements StorageProvider {
     const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="800" height="1100"><rect width="800" height="1100" fill="#020617"/><rect x="48" y="48" width="704" height="1004" rx="32" fill="#0f172a" stroke="#2563eb" stroke-width="4"/><text x="90" y="150" fill="#dc2626" font-family="Arial" font-size="34" font-weight="700">BICUNI · ${type}</text><foreignObject x="90" y="220" width="620" height="650"><div xmlns="http://www.w3.org/1999/xhtml" style="font:700 52px Arial;color:#f8fafc;line-height:1.2">${safeTitle}</div></foreignObject><text x="90" y="970" fill="#94a3b8" font-family="Arial" font-size="26">Bibliothèque Centrale Universelle</text></svg>`;
     await this.storage.bucket(this.bucketName).file(objectKey).save(svg, { contentType: "image/svg+xml", resumable: false, metadata: { cacheControl: "private, max-age=3600" } });
   }
+}
+
+export function privateStorageConfigured() {
+  return Boolean(process.env.GCS_BUCKET?.trim() && process.env.GOOGLE_CLOUD_PROJECT?.trim());
 }
 
 function requiredBucket() {

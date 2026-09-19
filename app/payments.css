@@ -1,0 +1,21 @@
+.pay-page{padding:32px 0 80px;max-width:720px}
+.pay-workspace{padding:24px;display:grid;gap:18px}
+.pay-toolbar,.pay-tabs,.pay-lang{display:flex;gap:8px;flex-wrap:wrap;align-items:center;justify-content:space-between}
+.pay-invoice code,.copy-field code{overflow-wrap:anywhere}
+.copy-field{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:center;padding:12px;border:1px solid var(--line);border-radius:14px}
+.copy-field span{grid-column:1/-1;color:var(--muted);font-size:12px;font-weight:800}
+.pay-proof{margin-top:8px}
+.clevone-pay{display:grid;gap:8px;margin-top:10px}
+.clevone-channels{display:grid;gap:8px;margin:0;padding:12px;border:1px solid var(--line);border-radius:14px}
+.clevone-channels label{display:flex;gap:8px;align-items:center;font-size:13px}
+.pay-receipt{padding:48px 0}
+.pay-print{padding:32px}
+.admin-filters{grid-template-columns:2fr repeat(4,minmax(0,1fr)) auto}
+@media(max-width:820px){
+  .copy-field{grid-template-columns:1fr}
+  .admin-filters{grid-template-columns:1fr}
+}
+@media print{
+  .site-header,footer,.pay-toolbar,.button,.skip-link{display:none!important}
+  .pay-print,.pay-workspace{box-shadow:none;background:white;color:#111}
+}

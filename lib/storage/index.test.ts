@@ -53,4 +53,9 @@ describe("privateStorage", () => {
     await expect(privateStorage().digest("users/test/missing.pdf")).resolves.toEqual({ exists: false });
     expect(mocks.createReadStream).not.toHaveBeenCalled();
   });
+
+  it("lit un préfixe d’octets pour la vérification MIME", async () => {
+    const { privateStorage } = await import("./index");
+    await expect(privateStorage().readPrefix("users/test/document.pdf", 4)).resolves.toEqual(Uint8Array.from(Buffer.from("safe")));
+  });
 });

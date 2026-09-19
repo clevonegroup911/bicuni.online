@@ -12,6 +12,9 @@ export type Permission =
   | "admin:pids:read"
   | "admin:pids:manage"
   | "admin:audit:read"
+  | "admin:payments:read"
+  | "admin:payments:review"
+  | "admin:payments:confirm"
   | "document:read"
   | "document:create"
   | "profile:write"
@@ -21,8 +24,8 @@ export type Permission =
 
 const grants: Record<Role, readonly (Permission | "*")[]> = {
   USER: ["document:read", "document:create", "profile:write"],
-  ADMIN: ["admin:access", "admin:users:read", "admin:institutions:read", "admin:institutions:manage", "admin:documents:review", "admin:pids:read", "admin:pids:manage", "admin:audit:read", "document:read"],
-  MODERATOR: ["admin:access", "admin:documents:review", "admin:pids:read", "document:read"],
+  ADMIN: ["admin:access", "admin:users:read", "admin:institutions:read", "admin:institutions:manage", "admin:documents:review", "admin:pids:read", "admin:pids:manage", "admin:audit:read", "admin:payments:read", "admin:payments:review", "admin:payments:confirm", "document:read"],
+  MODERATOR: ["admin:access", "admin:documents:review", "admin:pids:read", "admin:payments:read", "document:read"],
   INSTITUTION_ADMIN: ["admin:access", "admin:users:read", "admin:institutions:read", "admin:institutions:manage", "admin:documents:review", "admin:pids:read", "document:read", "document:create", "university:manage"],
   STUDENT: ["document:read", "document:create", "profile:write"],
   RESEARCHER: ["document:read", "document:create", "profile:write", "analytics:own"],

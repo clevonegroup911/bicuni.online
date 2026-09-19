@@ -7,7 +7,9 @@ import { createHash } from "node:crypto";
 import { db } from "@/lib/db/client";
 import { auditRequestContext } from "@/lib/admin/context";
 import { consumeAuthAttempt, RateLimitUnavailableError, requestIdentity } from "@/lib/auth/rate-limit";
-import { AuthRateLimitedError, AuthTemporarilyUnavailableError } from "@/lib/auth/credentials-errors";
+import { AuthRateLimitedError, AuthTemporarilyUnavailableError, AuthMfaRequiredError } from "@/lib/auth/credentials-errors";
+import { isAdministrativeRole } from "@/lib/auth/rbac";
+import { decryptSecret, MFA_LOCK_AFTER, MFA_LOCK_MS, verifyRecoveryCode, verifyTotp } from "@/lib/payments/clevone/totp";
 import { credentialsSchema } from "@/lib/auth/validators";
 import { logger } from "@/lib/observability/logger";
 
@@ -33,6 +35,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       credentials: {
         email: { type: "email" },
         password: { type: "password" },
+        totp: { type: "text" },
+        recoveryCode: { type: "text" },
       },
       authorize: async (rawCredentials, request) => {
         try {
@@ -52,10 +56,55 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             await db.auditLog.create({ data: { actorId: user.id, action: "AUTH_SIGN_IN_FAILED", entityType: "User", entityId: user.id, ...auditRequestContext(request) } });
             return null;
           }
+          if (isAdministrativeRole(user.role)) {
+            if (user.mfaLockedUntil && user.mfaLockedUntil.getTime() > Date.now()) {
+              throw new AuthRateLimitedError();
+            }
+            if (user.mfaEnabled) {
+              const totp = parsed.data.totp?.trim();
+              const recovery = parsed.data.recoveryCode?.trim();
+              let verified = false;
+              if (totp && user.mfaSecretEnc && verifyTotp(decryptSecret(user.mfaSecretEnc), totp)) verified = true;
+              if (!verified && recovery && user.mfaRecoveryHashes.length > 0) {
+                const index = verifyRecoveryCode(user.mfaRecoveryHashes, recovery);
+                if (index >= 0) {
+                  verified = true;
+                  await db.user.update({
+                    where: { id: user.id },
+                    data: {
+                      mfaRecoveryHashes: user.mfaRecoveryHashes.filter((_, current) => current !== index),
+                      mfaFailedAttempts: 0,
+                      mfaLockedUntil: null,
+                      mfaLastVerifiedAt: new Date(),
+                    },
+                  });
+                }
+              }
+              if (!verified) {
+                if (!totp && !recovery) throw new AuthMfaRequiredError();
+                const attempts = user.mfaFailedAttempts + 1;
+                await db.user.update({
+                  where: { id: user.id },
+                  data: {
+                    mfaFailedAttempts: attempts,
+                    mfaLockedUntil: attempts >= MFA_LOCK_AFTER ? new Date(Date.now() + MFA_LOCK_MS) : null,
+                  },
+                });
+                await db.auditLog.create({ data: { actorId: user.id, action: "AUTH_MFA_FAILED", entityType: "User", entityId: user.id, ...auditRequestContext(request) } });
+                return null;
+              }
+              if (totp) {
+                await db.user.update({
+                  where: { id: user.id },
+                  data: { mfaFailedAttempts: 0, mfaLockedUntil: null, mfaLastVerifiedAt: new Date() },
+                });
+              }
+            }
+          }
           return { id: user.id, email: user.email, name: user.name, image: user.image, role: user.role, status: user.status };
         } catch (error) {
           if (error instanceof RateLimitUnavailableError) throw new AuthTemporarilyUnavailableError();
-          if (error instanceof AuthRateLimitedError) throw error;
+          if (error instanceof AuthRateLimitedError || error instanceof AuthMfaRequiredError) throw error;
           logger.error("auth.credentials.error", error);
           throw error;
         }

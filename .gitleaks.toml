@@ -1,0 +1,10 @@
+title = "BICUNI"
+
+[allowlist]
+description = "Fixtures de tests et E2E — jamais des identifiants réels"
+paths = [
+  '''gitleaks\.toml''',
+  '''\.test\.ts$''',
+  '''\.spec\.ts$''',
+  '''(^|/)e2e/''',
+]

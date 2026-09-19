@@ -6,11 +6,12 @@ import { FormEvent, useState } from "react";
 import { AuthShell } from "@/components/auth/auth-shell";
 import { Field } from "@/components/ui/field";
 
-export function RegisterForm() {
+export function RegisterForm({ callbackUrl = "/dashboard" }: { callbackUrl?: string }) {
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [pending, setPending] = useState(false);
   const [show, setShow] = useState(false);
+  const loginHref = `/login?next=${encodeURIComponent(callbackUrl)}`;
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -39,12 +40,12 @@ export function RegisterForm() {
       eyebrow={<><UserPlus size={15} /> Inscription</>}
       title="Rejoindre BICUNI."
       description="Créez votre identité académique sécurisée."
-      footer={<>Déjà membre ? <Link href="/login" className="auth-link">Se connecter</Link></>}
+      footer={<>Déjà membre ? <Link href={loginHref} className="auth-link">Se connecter</Link></>}
     >
       {message ? (
         <>
           <p role="status" className="form-success">{message}</p>
-          <Link href="/login" className="button secondary">Se connecter</Link>
+          <Link href={loginHref} className="button secondary">Se connecter</Link>
         </>
       ) : (
         <form method="post" action="/signup" onSubmit={submit} className="auth-form" autoComplete="on">

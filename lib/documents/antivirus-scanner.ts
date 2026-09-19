@@ -84,6 +84,10 @@ class HttpAntivirusScanner implements AntivirusScanner {
   }
 }
 
+export function antivirusConfigured() {
+  return antivirusScanner().engine !== "unconfigured";
+}
+
 export function antivirusScanner(): AntivirusScanner {
   const endpoint = process.env.ANTIVIRUS_SCANNER_URL?.trim();
   if (!endpoint) return new UnconfiguredAntivirusScanner();

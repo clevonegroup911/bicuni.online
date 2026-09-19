@@ -1,8 +1,10 @@
-ARG NODE_IMAGE=node:22-bookworm-slim@sha256:d649c27dae7ba0137b3cef5dd75baa422c08dc3d9e3fc0c23dfb172dc3cc6436
+ARG NODE_IMAGE=node:22-bookworm-slim@sha256:83f487e0a63425e5b4d146fb5e5be574bcbe1b7b843d3ebafdd95eaf7767a7e5
 
 FROM ${NODE_IMAGE} AS base
+# Correctifs OS (ex. libpcre2) — pas d’ignore CVE sans justification datée.
 RUN apt-get update \
   && apt-get install --yes --no-install-recommends ca-certificates openssl \
+  && apt-get upgrade --yes \
   && rm -rf /var/lib/apt/lists/*
 
 FROM base AS deps

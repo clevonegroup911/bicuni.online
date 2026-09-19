@@ -4,6 +4,7 @@ import { auth } from "@/auth";
 import { db } from "@/lib/db/client";
 import { can, isAdministrativeRole, type Permission } from "@/lib/auth/rbac";
 import { hasActiveSubscription } from "@/lib/subscriptions/service";
+import { mfaRequiredForConfirm } from "@/lib/payments/clevone/totp";
 
 export async function requireUser() {
   const session = await auth();
@@ -22,15 +23,18 @@ export async function requireRole(allowedRoles: readonly Role[]) {
 export async function requireAdmin() {
   const session = await auth();
   if (!session?.user?.id) redirect("/admin/login");
-  const user = await db.user.findUnique({ where: { id: session.user.id }, select: { id: true, email: true, name: true, image: true, role: true, status: true } });
+  const user = await db.user.findUnique({ where: { id: session.user.id }, select: { id: true, email: true, name: true, image: true, role: true, status: true, mfaEnabled: true } });
   if (!user || user.status !== "ACTIVE") redirect("/admin/login?account=unavailable");
   if (!isAdministrativeRole(user.role)) redirect("/admin/denied");
   return user;
 }
 
-export async function requirePermission(permission: Permission) {
+export async function requirePermission(permission: Permission, options?: { allowMfaEnrollment?: boolean }) {
   const user = await requireAdmin();
   if (!can(user.role, permission)) redirect("/admin/denied");
+  if (!options?.allowMfaEnrollment && mfaRequiredForConfirm() && !user.mfaEnabled) {
+    redirect("/admin/security");
+  }
   return user;
 }
 

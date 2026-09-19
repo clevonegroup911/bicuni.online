@@ -17,9 +17,29 @@ concurrency:
 jobs:
   quality:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: bicuni
+          POSTGRES_PASSWORD: static-ci-password
+          POSTGRES_DB: bicuni
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U bicuni -d bicuni"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
     env:
       DATABASE_URL: postgresql://bicuni:static-ci-password@127.0.0.1:5432/bicuni?schema=public
+      OAAS_ALLOW_TEST_PAYMENTS: "1"
+      AUTH_SECRET: static-ci-auth-secret-not-real-use-only-in-ci
+      AUTH_URL: http://127.0.0.1:3100
+      AUTH_TRUST_HOST: "true"
+      PUBLIC_APP_URL: http://127.0.0.1:3100
+      PLAYWRIGHT_SKIP_WEBSERVER: "1"
 
     steps:
       - name: Checkout
@@ -40,20 +60,70 @@ jobs:
       - name: Validate Prisma schema
         run: npx prisma validate
 
+      - name: Generate Prisma client
+        run: npx prisma generate
+
+      - name: Apply migrations
+        run: npx prisma migrate deploy
+
+      - name: Seed OaaS TEST catalogue
+        run: |
+          if [ -f scripts/seed-oaas.mjs ]; then
+            npm run db:seed:oaas
+          else
+            echo "Seed OaaS absent sur cette branche — ignoré."
+          fi
+
       - name: Lint
         run: npm run lint
 
       - name: Typecheck
         run: npm run typecheck
 
-      - name: Test
+      - name: Unit tests
         run: npm test
 
       - name: Build
         run: npm run build
+
+      - name: Install Playwright Chromium
+        if: hashFiles('e2e/oaas-academic-research.spec.ts') != ''
+        run: npx playwright install --with-deps chromium
+
+      - name: Start app for E2E
+        if: hashFiles('e2e/oaas-academic-research.spec.ts') != ''
+        run: |
+          npm run start -- --hostname 127.0.0.1 --port 3100 &
+          echo $! > /tmp/bicuni-e2e.pid
+          for attempt in $(seq 1 60); do
+            if curl --fail --silent http://127.0.0.1:3100/api/health/live >/dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "App failed to start"
+          exit 1
+
+      - name: E2E OaaS
+        if: hashFiles('e2e/oaas-academic-research.spec.ts') != ''
+        run: npx playwright test e2e/oaas-academic-research.spec.ts --project=desktop
         env:
-          PUBLIC_APP_URL: http://127.0.0.1:3000
-          AUTH_URL: http://127.0.0.1:3000
+          PLAYWRIGHT_BASE_URL: http://127.0.0.1:3100
+
+      - name: Upload Playwright artifacts
+        if: failure() && hashFiles('e2e/oaas-academic-research.spec.ts') != ''
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: playwright-oaas-${{ github.sha }}
+          path: |
+            test-results/
+            playwright-report/
+          if-no-files-found: ignore
+
+      - name: Stop app
+        if: always() && hashFiles('e2e/oaas-academic-research.spec.ts') != ''
+        run: |
+          if [ -f /tmp/bicuni-e2e.pid ]; then kill "$(cat /tmp/bicuni-e2e.pid)" || true; fi
 
       - name: Verify generated files and formatting
         run: |
@@ -101,7 +171,7 @@ jobs:
 
   container-scan:
     runs-on: ubuntu-latest
-    timeout-minutes: 35
+    timeout-minutes: 40
     steps:
       - name: Checkout
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
@@ -150,6 +220,14 @@ jobs:
           ignore-unfixed: true
           vuln-type: os,library
           severity: HIGH,CRITICAL
+
+      - name: Upload Trivy web report
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: trivy-web-${{ github.sha }}
+          path: trivy-results*
+          if-no-files-found: ignore
 
       - name: Build operations image locally
         uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6

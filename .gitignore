@@ -34,3 +34,4 @@ node_modules/
 # Local credentials
 credentials.json
 service-account*.json
+.tmp/

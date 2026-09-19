@@ -48,7 +48,7 @@ test("workflow documentaire réel, rejet obligatoire et permissions universitair
   ids.categoryIds.push(category.id);
 
   const createDocument = async (suffix: string) => {
-    const document = await db.document.create({ data: { slug: `e2e-${suffix}-${runId}`, title: `Document ${suffix}`, authorId: student.id, universityId: university.id, categoryId: category.id, files: { create: { objectKey: `e2e/${runId}/${suffix}.pdf`, fileName: `${suffix}.pdf`, mimeType: "application/pdf", sizeBytes: 100, checksum: "a".repeat(64), isUploaded: true } } } });
+    const document = await db.document.create({ data: { slug: `e2e-${suffix}-${runId}`, title: `Document ${suffix}`, authorId: student.id, universityId: university.id, categoryId: category.id, files: { create: { objectKey: `e2e/${runId}/${suffix}.pdf`, fileName: `${suffix}.pdf`, mimeType: "application/pdf", sizeBytes: 100, checksum: "a".repeat(64), isUploaded: true, scanStatus: "CLEAN", scannedAt: new Date() } } } });
     ids.documentIds.push(document.id);
     return document;
   };
