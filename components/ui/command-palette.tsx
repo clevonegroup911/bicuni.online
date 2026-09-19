@@ -13,6 +13,8 @@ const actions = [
   { label: "Déposer un document", href: "/documents/upload" },
   { label: "Mon espace", href: "/dashboard" },
   { label: "Mes documents", href: "/dashboard/documents" },
+  { label: "Résultats OaaS", href: "/outcomes" },
+  { label: "Mes missions", href: "/dashboard/missions" },
   { label: "Plans et abonnements", href: "/pricing" },
 ];
 

@@ -43,7 +43,9 @@ export default async function AdminInvoicesPage({
           emptyDescription="Les factures confirmées par webhook apparaîtront ici."
           invoices={items.map((invoice) => ({
             ...invoice,
-            subscriberEmail: invoice.subscription.user.email,
+            subscriberEmail:
+              invoice.subscription?.user.email ??
+              (invoice.outcomeMissionId ? `mission:${invoice.outcomeMissionId}` : "—"),
           }))}
         />
         <Pagination

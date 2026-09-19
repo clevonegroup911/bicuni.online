@@ -82,7 +82,11 @@ export default async function AdminPaymentsPage({
             <div className="admin-row" key={invoice.id}>
               <span>
                 <strong>{invoice.number ?? invoice.providerRef}</strong>
-                <small>{invoice.subscription.user.email} · {invoice.subscription.plan.name} · {invoice.status}</small>
+                <small>
+                  {invoice.subscription?.user.email ??
+                    (invoice.outcomeMissionId ? `mission:${invoice.outcomeMissionId}` : "—")}
+                  {invoice.subscription ? ` · ${invoice.subscription.plan.name}` : " · OaaS"} · {invoice.status}
+                </small>
               </span>
               <span>{money(invoice.amountDueCents, invoice.currency)}</span>
             </div>

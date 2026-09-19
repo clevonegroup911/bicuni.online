@@ -21,8 +21,13 @@ export default async function Pricing({
     <main className="shell">
       <header className="page-hero pricing-hero">
         <Breadcrumb items={[{ label: "Accueil", href: "/" }, { label: "Plans" }]} />
-        <span className="eyebrow">Abonnements BICUNI</span>
-        <h1>Investir dans le savoir.</h1>
+        <span className="eyebrow">Abonnements BICUNI (offre secondaire)</span>
+        <h1>Stockage, support et capacité.</h1>
+        <p className="pricing-note">
+          Le cœur commercial de BICUNI est désormais l’Outcome-as-a-Service.
+          Consultez <a href="/outcomes">les résultats commandables</a> pour commander une mission.
+          Les abonnements restent disponibles pour le stockage, le support, la priorité et l’accès institutionnel.
+        </p>
         <p className="pricing-note">Des offres transparentes pour chaque étape du parcours académique. Chaque abonnement finance la préservation du savoir. Aucune formule gratuite permanente.</p>
         <p className="pricing-note">Les montants affichés sont des propositions commerciales, pas encore un tarif contractuel définitif. Un paiement n’est jamais simulé : la confirmation vient exclusivement du prestataire.</p>
         {subscriptionRequired ? (

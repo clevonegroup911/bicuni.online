@@ -9,6 +9,7 @@ import {
   Heart,
   LayoutDashboard,
   Settings,
+  Target,
   UploadCloud,
   UserRound,
 } from "lucide-react";
@@ -18,6 +19,7 @@ import { usePathname } from "next/navigation";
 const variants = {
   student: [
     ["Vue d’ensemble", "/dashboard", LayoutDashboard],
+    ["Mes missions", "/dashboard/missions", Target],
     ["Mes documents", "/dashboard/documents", BookOpen],
     ["Téléverser", "/documents/upload", UploadCloud],
     ["Favoris", "/dashboard/favorites", Heart],
@@ -29,6 +31,7 @@ const variants = {
   ],
   university: [
     ["Vue d’ensemble", "/university", LayoutDashboard],
+    ["Missions", "/dashboard/missions", Target],
     ["Validations", "/admin/documents", FileCheck2],
     ["Documents", "/dashboard/documents", BookOpen],
     ["Bibliothèque", "/library", BookOpen],
