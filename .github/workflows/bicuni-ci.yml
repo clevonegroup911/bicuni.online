@@ -32,8 +32,20 @@ jobs:
           --health-interval 5s
           --health-timeout 5s
           --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
     env:
       DATABASE_URL: postgresql://bicuni:static-ci-password@127.0.0.1:5432/bicuni?schema=public
+      REDIS_URL: redis://127.0.0.1:6379
+      REDIS_KEY_PREFIX: bicuni-ci
+      TRUSTED_PROXY_STRATEGY: loopback
       OAAS_ALLOW_TEST_PAYMENTS: "1"
       AUTH_SECRET: static-ci-auth-secret-not-real-use-only-in-ci
       AUTH_URL: http://127.0.0.1:3100

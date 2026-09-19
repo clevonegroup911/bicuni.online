@@ -81,11 +81,23 @@ async function assertKeyboardReachable(page: Page, name: RegExp | string) {
 }
 
 async function loginAs(page: Page, email: string, password: string) {
-  await page.goto("/login", { waitUntil: "domcontentloaded" });
-  await page.getByLabel(/Adresse e-mail|email/i).fill(email);
-  await page.locator('input[name="password"]').fill(password);
-  await page.getByRole("button", { name: /Se connecter/i }).click();
-  await expect(page).toHaveURL(/\/(dashboard|outcomes)/, { timeout: 30_000 });
+  // Prefer Auth.js credentials callback (same path as production sign-in) so CI with
+  // `next start` + Redis rate-limit does not depend on client hydration timing.
+  const csrf = await page.request.get("/api/auth/csrf");
+  expect(csrf.ok()).toBeTruthy();
+  const { csrfToken } = (await csrf.json()) as { csrfToken: string };
+  const login = await page.request.post("/api/auth/callback/credentials", {
+    form: {
+      csrfToken,
+      email,
+      password,
+      callbackUrl: "/dashboard",
+      json: "true",
+    },
+  });
+  expect(login.ok(), `login HTTP ${login.status()}`).toBeTruthy();
+  await page.goto("/dashboard", { waitUntil: "domcontentloaded" });
+  await expect(page).toHaveURL(/\/dashboard/, { timeout: 30_000 });
 }
 
 test.afterAll(async () => {
@@ -192,7 +204,7 @@ test.describe("OaaS responsive mission coverage", () => {
         await page.goto("/dashboard/missions", { waitUntil: "domcontentloaded" });
       });
       await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
-      await expect(page.getByText(mission.publicRef)).toBeVisible();
+      await expect(page.getByText(mission.publicRef).first()).toBeVisible();
       viewportReports.push(await assertNoHorizontalOverflow(page, `/missions@${vp.name}`));
       await assertKeyboardReachable(page, /Ouvrir|Décrire le résultat/i);
 
