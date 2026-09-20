@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Crown, LayoutDashboard, Menu, ShieldCheck, UserRound, X } from "lucide-react";
+import { LayoutDashboard, Menu, ShieldCheck, Target, UserRound, X } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Logo } from "@/components/logo";
@@ -12,7 +12,7 @@ const publicLinks = [
   ["Recherche", "/search"],
   ["Documents", "/documents"],
   ["Universités", "/universities"],
-  ["Plans", "/pricing"],
+  ["Résultats", "/outcomes"],
 ] as const;
 
 export function Header({ user }: { user?: { name: string | null; isAdmin: boolean } | null }) {
@@ -69,9 +69,9 @@ export function Header({ user }: { user?: { name: string | null; isAdmin: boolea
             <>
               <Link href="/login" className="button ghost desktop-action">Connexion</Link>
               <Link href="/signup" className="button secondary desktop-action">Inscription</Link>
-              <Link href="/pricing" className="button header-cta desktop-action">
-                <Crown size={16} />
-                S’abonner
+              <Link href="/outcomes" className="button header-cta desktop-action">
+                <Target size={16} />
+                Décrire le résultat
               </Link>
             </>
           )}
@@ -102,6 +102,7 @@ export function Header({ user }: { user?: { name: string | null; isAdmin: boolea
             <>
               <Link href="/login">Connexion</Link>
               <Link href="/signup">Inscription</Link>
+              <Link href="/outcomes">Résultats OaaS</Link>
               <Link href="/pricing">Abonnements</Link>
             </>
           )}

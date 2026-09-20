@@ -127,6 +127,11 @@ model User {
   paymentRefundsReviewed  PaymentRefund[] @relation("RefundReviewer")
   fxRatesEntered        FxRate[]             @relation("FxEnteredBy")
   fxRatesApproved       FxRate[]             @relation("FxApprovedBy")
+  outcomeMissionsOwned  OutcomeMission[]     @relation("OutcomeMissionOwner")
+  outcomeApprovals      OutcomeApproval[]    @relation("OutcomeApprovalActor")
+  outcomeAcceptances    OutcomeAcceptance[]  @relation("OutcomeAcceptanceActor")
+  outcomeRevisions      OutcomeRevision[]    @relation("OutcomeRevisionRequester")
+  outcomeAgentJournal   OutcomeAgentJournal[]
 
   @@index([role, status, createdAt])
 }
@@ -230,44 +235,51 @@ model Subscription {
 }
 
 model Payment {
-  id             String          @id @default(cuid())
-  userId         String
-  subscriptionId String?
-  provider       PaymentProvider
-  providerRef    String          @unique
-  amountCents    Int
-  currency       String          @default("USD")
-  status         String
-  metadata       Json?
-  createdAt      DateTime        @default(now())
-  updatedAt      DateTime        @updatedAt
-  user           User            @relation(fields: [userId], references: [id])
-  subscription   Subscription?   @relation(fields: [subscriptionId], references: [id])
+  id               String           @id @default(cuid())
+  userId           String
+  subscriptionId   String?
+  outcomeMissionId String?
+  provider         PaymentProvider
+  providerRef      String           @unique
+  amountCents      Int
+  currency         String           @default("USD")
+  status           String
+  metadata         Json?
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+  user             User             @relation(fields: [userId], references: [id])
+  subscription     Subscription?    @relation(fields: [subscriptionId], references: [id])
+  outcomeMission   OutcomeMission?  @relation(fields: [outcomeMissionId], references: [id], onDelete: SetNull)
+
+  @@index([outcomeMissionId])
 }
 
 model Invoice {
-  id              String          @id @default(cuid())
-  subscriptionId  String
-  provider        PaymentProvider
-  providerRef     String          @unique
-  number          String?
-  amountDueCents  Int
-  amountPaidCents Int             @default(0)
-  currency        String          @default("USD")
-  status          String
-  hostedUrl       String?
-  pdfUrl          String?
-  periodStart     DateTime?
-  periodEnd       DateTime?
-  fxPair          String?
-  fxRateUnits     Int?
-  fxSource        String?
-  fxEffectiveAt   DateTime?
-  createdAt       DateTime        @default(now())
-  updatedAt       DateTime        @updatedAt
-  subscription    Subscription    @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+  id                String           @id @default(cuid())
+  subscriptionId    String?
+  outcomeMissionId  String?
+  provider          PaymentProvider
+  providerRef       String           @unique
+  number            String?
+  amountDueCents    Int
+  amountPaidCents   Int              @default(0)
+  currency          String           @default("USD")
+  status            String
+  hostedUrl         String?
+  pdfUrl            String?
+  periodStart       DateTime?
+  periodEnd         DateTime?
+  fxPair            String?
+  fxRateUnits       Int?
+  fxSource          String?
+  fxEffectiveAt     DateTime?
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  subscription      Subscription?    @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+  outcomeMission    OutcomeMission?  @relation(fields: [outcomeMissionId], references: [id], onDelete: SetNull)
 
   @@index([subscriptionId, createdAt])
+  @@index([outcomeMissionId, createdAt])
 }
 
 model WebhookEvent {
@@ -300,6 +312,7 @@ model University {
   profiles  Profile[]
   documents Document[]
   admins    User[]            @relation("UniversityAdmins")
+  outcomeMissions OutcomeMission[]
 
   @@index([status, type, country])
   @@index([createdAt])
@@ -369,6 +382,7 @@ model Document {
   favorites          DocumentFavorite[]
   comments           DocumentComment[]
   history            DocumentHistory[]
+  outcomeSources     OutcomeMissionSource[]
 
   @@index([status, createdAt])
   @@index([categoryId, year])
@@ -625,25 +639,28 @@ model FxRate {
 }
 
 model PaymentOrder {
-  id            String            @id @default(cuid())
-  userId        String
-  planId        String
-  amountCents   Int
-  currency      String
-  status        String            @default("OPEN")
-  fxPair        String?
-  fxRateUnits   Int?
-  fxSource      String?
-  fxEffectiveAt DateTime?
-  fxRateId      String?
-  createdAt     DateTime          @default(now())
-  updatedAt     DateTime          @updatedAt
-  user          User              @relation(fields: [userId], references: [id], onDelete: Cascade)
-  plan          Plan              @relation(fields: [planId], references: [id])
-  fxRate        FxRate?           @relation(fields: [fxRateId], references: [id], onDelete: SetNull)
-  intents       PaymentIntent[]
+  id               String           @id @default(cuid())
+  userId           String
+  planId           String
+  outcomeMissionId String?
+  amountCents      Int
+  currency         String
+  status           String           @default("OPEN")
+  fxPair           String?
+  fxRateUnits      Int?
+  fxSource         String?
+  fxEffectiveAt    DateTime?
+  fxRateId         String?
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+  user             User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  plan             Plan             @relation(fields: [planId], references: [id])
+  outcomeMission   OutcomeMission?  @relation(fields: [outcomeMissionId], references: [id], onDelete: SetNull)
+  fxRate           FxRate?          @relation(fields: [fxRateId], references: [id], onDelete: SetNull)
+  intents          PaymentIntent[]
 
   @@index([userId, createdAt])
+  @@index([outcomeMissionId])
 }
 
 model PaymentIntent {
@@ -653,6 +670,7 @@ model PaymentIntent {
   orderId              String
   planId               String
   subscriptionId       String?
+  outcomeMissionId     String?
   invoiceId            String?                   @unique
   channel              PaymentChannel
   amountCents          Int
@@ -679,6 +697,7 @@ model PaymentIntent {
   user                 User                      @relation(fields: [userId], references: [id], onDelete: Cascade)
   order                PaymentOrder              @relation(fields: [orderId], references: [id], onDelete: Cascade)
   plan                 Plan                      @relation(fields: [planId], references: [id])
+  outcomeMission       OutcomeMission?           @relation(fields: [outcomeMissionId], references: [id], onDelete: SetNull)
   fxRate               FxRate?                   @relation(fields: [fxRateId], references: [id], onDelete: SetNull)
   attempts             PaymentAttempt[]
   proofs               PaymentProof[]
@@ -692,6 +711,7 @@ model PaymentIntent {
   @@index([userId, status, createdAt])
   @@index([status, channel, currency, createdAt])
   @@index([expiresAt, status])
+  @@index([outcomeMissionId])
 }
 
 model PaymentAttempt {
@@ -882,4 +902,466 @@ model PersistentIdentifierTargetHistory {
   changedBy              User?                @relation("PidChanger", fields: [changedById], references: [id], onDelete: SetNull)
 
   @@index([persistentIdentifierId, changedAt])
+}
+
+// ---------------------------------------------------------------------------
+// OaaS — Outcome-as-a-Service (missions agentiques)
+// ---------------------------------------------------------------------------
+
+enum OutcomeMissionStatus {
+  DRAFT
+  QUALIFICATION_REQUIRED
+  QUALIFIED
+  QUOTED
+  AWAITING_APPROVAL
+  AWAITING_PAYMENT
+  PLANNED
+  READY
+  EXECUTING
+  AWAITING_HUMAN_REVIEW
+  VERIFYING
+  DELIVERY_READY
+  DELIVERED
+  ACCEPTED
+  REVISION_REQUESTED
+  COMPLETED
+  BLOCKED
+  FAILED
+  CANCELLED
+  EXPIRED
+}
+
+enum OutcomeContractStatus {
+  DRAFT
+  ISSUED
+  ACCEPTED
+  REFUSED
+  AMENDMENT_REQUESTED
+  SUPERSEDED
+}
+
+enum OutcomeTaskStatus {
+  PENDING
+  READY
+  RUNNING
+  AWAITING_HUMAN
+  COMPLETED
+  FAILED
+  SKIPPED
+  BLOCKED
+}
+
+enum OutcomeApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  EXPIRED
+}
+
+enum OutcomeDeliverableStatus {
+  DRAFT
+  READY
+  DELIVERED
+  ACCEPTED
+  REJECTED
+}
+
+enum OutcomeEvidenceKind {
+  SOURCE
+  PROVENANCE
+  CHECKSUM
+  HUMAN_REVIEW
+  QUALITY_GATE
+  PAYMENT
+  SYSTEM
+}
+
+enum OutcomeQualityVerdict {
+  PASS
+  FAIL
+  WARN
+  PENDING
+}
+
+enum OutcomeAcceptanceDecision {
+  ACCEPTED
+  REVISION_REQUESTED
+  REJECTED
+}
+
+enum OutcomeCostKind {
+  DEPOSIT
+  MILESTONE
+  BALANCE
+  OUT_OF_SCOPE
+  INSTITUTIONAL
+}
+
+enum OutcomeConfidentiality {
+  STANDARD
+  RESTRICTED
+  CONFIDENTIAL
+  STRICT
+}
+
+enum OutcomePricingMode {
+  FIXED
+  QUOTE
+}
+
+model OutcomePack {
+  id                    String              @id @default(cuid())
+  slug                  String              @unique
+  title                 String
+  summary               String
+  resultDescription     String
+  requiredInputs        Json
+  indicativeDeadlineDays Int
+  revisionsIncluded     Int                 @default(1)
+  acceptanceCriteria    Json
+  confidentialityDefault OutcomeConfidentiality @default(STANDARD)
+  pricingMode           OutcomePricingMode  @default(QUOTE)
+  indicativePriceCents  Int?
+  currency              String              @default("USD")
+  planSlug              String?
+  active                Boolean             @default(true)
+  sortOrder             Int                 @default(0)
+  createdAt             DateTime            @default(now())
+  updatedAt             DateTime            @updatedAt
+  missions              OutcomeMission[]
+
+  @@index([active, sortOrder])
+}
+
+model OutcomeMission {
+  id                    String                @id @default(cuid())
+  publicRef             String                @unique
+  ownerId               String
+  universityId          String?
+  packId                String?
+  title                 String
+  originalRequest       String
+  expectedOutcome       String
+  language              String                @default("fr")
+  academicDomain        String?
+  academicLevel         String?
+  scope                 String?
+  exclusions            String?
+  deadlineAt            DateTime?
+  maxBudgetCents        Int?
+  confidentiality       OutcomeConfidentiality @default(STANDARD)
+  acceptanceCriteria    Json?
+  status                OutcomeMissionStatus  @default(DRAFT)
+  estimatedCostCents    Int?
+  actualCostCents       Int                   @default(0)
+  currency              String                @default("USD")
+  risks                 Json?
+  integrityDeclaration  String?
+  aiAssistanceLevel     String?
+  nextStep              String?
+  blockedReason         String?
+  quotedAt              DateTime?
+  approvedAt            DateTime?
+  paidAt                DateTime?
+  startedAt             DateTime?
+  deliveredAt           DateTime?
+  acceptedAt            DateTime?
+  completedAt           DateTime?
+  cancelledAt           DateTime?
+  createdAt             DateTime              @default(now())
+  updatedAt             DateTime              @updatedAt
+  owner                 User                  @relation("OutcomeMissionOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  university            University?           @relation(fields: [universityId], references: [id], onDelete: SetNull)
+  pack                  OutcomePack?          @relation(fields: [packId], references: [id], onDelete: SetNull)
+  sources               OutcomeMissionSource[]
+  contract              OutcomeContract?
+  plan                  OutcomePlan?
+  tasks                 OutcomeTask[]
+  agentAssignments      OutcomeAgentAssignment[]
+  approvals             OutcomeApproval[]
+  evidences             OutcomeEvidence[]
+  deliverables          OutcomeDeliverable[]
+  qualityChecks         OutcomeQualityCheck[]
+  revisions             OutcomeRevision[]
+  acceptance            OutcomeAcceptance?
+  costs                 OutcomeCost[]
+  milestones            OutcomeMilestone[]
+  statusTransitions     OutcomeStatusTransition[]
+  paymentOrders         PaymentOrder[]
+  paymentIntents        PaymentIntent[]
+  invoices              Invoice[]
+  payments              Payment[]
+
+  @@index([ownerId, status, createdAt])
+  @@index([status, updatedAt])
+  @@index([packId])
+}
+
+model OutcomeMissionSource {
+  id          String         @id @default(cuid())
+  missionId   String
+  documentId  String?
+  label       String
+  uri         String?
+  notes       String?
+  accessible  Boolean        @default(true)
+  createdAt   DateTime       @default(now())
+  mission     OutcomeMission @relation(fields: [missionId], references: [id], onDelete: Cascade)
+  document    Document?      @relation(fields: [documentId], references: [id], onDelete: SetNull)
+
+  @@index([missionId])
+}
+
+model OutcomeContract {
+  id                      String                @id @default(cuid())
+  missionId               String                @unique
+  version                 Int                   @default(1)
+  status                  OutcomeContractStatus @default(DRAFT)
+  objective               String
+  deliverables            Json
+  sourcesProvided         Json
+  externalSourcesAllowed  Json
+  acceptanceCriteria      Json
+  deadlineAt              DateTime?
+  priceCents              Int
+  depositCents            Int                   @default(0)
+  balanceCents            Int                   @default(0)
+  currency                String                @default("USD")
+  revisionsIncluded       Int                   @default(1)
+  limits                  String?
+  confidentiality         OutcomeConfidentiality @default(STANDARD)
+  authorizations          Json?
+  humanValidationActions  Json?
+  cancellationTerms       String?
+  refundTerms             String?
+  integrityWarnings       Json?
+  issuedAt                DateTime?
+  acceptedAt              DateTime?
+  refusedAt               DateTime?
+  createdAt               DateTime              @default(now())
+  updatedAt               DateTime              @updatedAt
+  mission                 OutcomeMission        @relation(fields: [missionId], references: [id], onDelete: Cascade)
+
+  @@index([status, createdAt])
+}
+
+model OutcomePlan {
+  id            String         @id @default(cuid())
+  missionId     String         @unique
+  version       Int            @default(1)
+  graph         Json
+  checkpoint    Json?
+  resumeToken   String?
+  estimatedMinutes Int?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  mission       OutcomeMission @relation(fields: [missionId], references: [id], onDelete: Cascade)
+}
+
+model OutcomeTask {
+  id              String            @id @default(cuid())
+  missionId       String
+  key             String
+  title           String
+  description     String?
+  status          OutcomeTaskStatus @default(PENDING)
+  dependsOn       String[]          @default([])
+  agentKey        String?
+  parallelGroup   String?
+  requiresHuman   Boolean           @default(false)
+  costCents       Int               @default(0)
+  result          Json?
+  errorMessage    String?
+  startedAt       DateTime?
+  completedAt     DateTime?
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  mission         OutcomeMission    @relation(fields: [missionId], references: [id], onDelete: Cascade)
+  assignments     OutcomeAgentAssignment[]
+
+  @@unique([missionId, key])
+  @@index([missionId, status])
+}
+
+model OutcomeAgent {
+  id              String   @id @default(cuid())
+  key             String   @unique
+  name            String
+  specialty       String
+  version         String   @default("1.0.0")
+  tools           Json
+  permissions     Json
+  allowedSources  Json
+  costPerTaskCents Int     @default(0)
+  available       Boolean  @default(true)
+  successRateBps  Int      @default(0)
+  confidenceLevel String   @default("medium")
+  lastActiveAt    DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  assignments     OutcomeAgentAssignment[]
+  journal         OutcomeAgentJournal[]
+}
+
+model OutcomeAgentAssignment {
+  id        String         @id @default(cuid())
+  missionId String
+  taskId    String
+  agentId   String
+  role      String         @default("executor")
+  assignedAt DateTime      @default(now())
+  mission   OutcomeMission @relation(fields: [missionId], references: [id], onDelete: Cascade)
+  task      OutcomeTask    @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  agent     OutcomeAgent   @relation(fields: [agentId], references: [id], onDelete: Restrict)
+
+  @@unique([taskId, agentId])
+  @@index([missionId])
+}
+
+model OutcomeAgentJournal {
+  id        String       @id @default(cuid())
+  agentId   String
+  missionId String?
+  actorId   String?
+  event     String
+  detail    Json?
+  createdAt DateTime     @default(now())
+  agent     OutcomeAgent @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  actor     User?        @relation(fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([agentId, createdAt])
+}
+
+model OutcomeApproval {
+  id          String                @id @default(cuid())
+  missionId   String
+  actorId     String?
+  kind        String
+  title       String
+  status      OutcomeApprovalStatus @default(PENDING)
+  reason      String?
+  decidedAt   DateTime?
+  createdAt   DateTime              @default(now())
+  updatedAt   DateTime              @updatedAt
+  mission     OutcomeMission        @relation(fields: [missionId], references: [id], onDelete: Cascade)
+  actor       User?                 @relation("OutcomeApprovalActor", fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([missionId, status])
+}
+
+model OutcomeEvidence {
+  id          String              @id @default(cuid())
+  missionId   String
+  kind        OutcomeEvidenceKind
+  title       String
+  summary     String?
+  payload     Json
+  checksum    String?
+  invented    Boolean             @default(false)
+  createdAt   DateTime            @default(now())
+  mission     OutcomeMission      @relation(fields: [missionId], references: [id], onDelete: Cascade)
+
+  @@index([missionId, kind])
+}
+
+model OutcomeDeliverable {
+  id            String                   @id @default(cuid())
+  missionId     String
+  key           String
+  title         String
+  format        String
+  status        OutcomeDeliverableStatus @default(DRAFT)
+  content       Json?
+  objectKey     String?
+  checksum      String?
+  deliveredAt   DateTime?
+  createdAt     DateTime                 @default(now())
+  updatedAt     DateTime                 @updatedAt
+  mission       OutcomeMission           @relation(fields: [missionId], references: [id], onDelete: Cascade)
+
+  @@unique([missionId, key])
+  @@index([missionId, status])
+}
+
+model OutcomeQualityCheck {
+  id          String                @id @default(cuid())
+  missionId   String
+  key         String
+  title       String
+  verdict     OutcomeQualityVerdict @default(PENDING)
+  details     Json?
+  checkedAt   DateTime?
+  createdAt   DateTime              @default(now())
+  mission     OutcomeMission        @relation(fields: [missionId], references: [id], onDelete: Cascade)
+
+  @@unique([missionId, key])
+  @@index([missionId, verdict])
+}
+
+model OutcomeRevision {
+  id          String         @id @default(cuid())
+  missionId   String
+  requesterId String
+  reason      String
+  scope       String?
+  status      String         @default("OPEN")
+  createdAt   DateTime       @default(now())
+  resolvedAt  DateTime?
+  mission     OutcomeMission @relation(fields: [missionId], references: [id], onDelete: Cascade)
+  requester   User           @relation("OutcomeRevisionRequester", fields: [requesterId], references: [id], onDelete: Cascade)
+
+  @@index([missionId, status])
+}
+
+model OutcomeAcceptance {
+  id          String                     @id @default(cuid())
+  missionId   String                     @unique
+  actorId     String
+  decision    OutcomeAcceptanceDecision
+  comment     String?
+  decidedAt   DateTime                   @default(now())
+  mission     OutcomeMission             @relation(fields: [missionId], references: [id], onDelete: Cascade)
+  actor       User                       @relation("OutcomeAcceptanceActor", fields: [actorId], references: [id], onDelete: Cascade)
+}
+
+model OutcomeCost {
+  id          String          @id @default(cuid())
+  missionId   String
+  kind        OutcomeCostKind
+  label       String
+  amountCents Int
+  currency    String          @default("USD")
+  invoiceId   String?
+  paidAt      DateTime?
+  createdAt   DateTime        @default(now())
+  mission     OutcomeMission  @relation(fields: [missionId], references: [id], onDelete: Cascade)
+
+  @@index([missionId, kind])
+}
+
+model OutcomeMilestone {
+  id          String         @id @default(cuid())
+  missionId   String
+  key         String
+  title       String
+  amountCents Int            @default(0)
+  unlockedAt  DateTime?
+  completedAt DateTime?
+  createdAt   DateTime       @default(now())
+  mission     OutcomeMission @relation(fields: [missionId], references: [id], onDelete: Cascade)
+
+  @@unique([missionId, key])
+}
+
+model OutcomeStatusTransition {
+  id          String               @id @default(cuid())
+  missionId   String
+  fromStatus  OutcomeMissionStatus
+  toStatus    OutcomeMissionStatus
+  reason      String?
+  actorId     String?
+  createdAt   DateTime             @default(now())
+  mission     OutcomeMission       @relation(fields: [missionId], references: [id], onDelete: Cascade)
+
+  @@index([missionId, createdAt])
 }

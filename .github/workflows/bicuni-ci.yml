@@ -32,8 +32,20 @@ jobs:
           --health-interval 5s
           --health-timeout 5s
           --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
     env:
       DATABASE_URL: postgresql://bicuni:static-ci-password@127.0.0.1:5432/bicuni?schema=public
+      REDIS_URL: redis://127.0.0.1:6379
+      REDIS_KEY_PREFIX: bicuni-ci
+      TRUSTED_PROXY_STRATEGY: loopback
       OAAS_ALLOW_TEST_PAYMENTS: "1"
       AUTH_SECRET: static-ci-auth-secret-not-real-use-only-in-ci
       AUTH_URL: http://127.0.0.1:3100
@@ -93,7 +105,7 @@ jobs:
       - name: Start app for E2E
         if: hashFiles('e2e/oaas-academic-research.spec.ts') != ''
         run: |
-          npm run start -- --hostname 127.0.0.1 --port 3100 &
+          npm run start -- --hostname 127.0.0.1 --port 3100 > /tmp/bicuni-e2e-server.log 2>&1 &
           echo $! > /tmp/bicuni-e2e.pid
           for attempt in $(seq 1 60); do
             if curl --fail --silent http://127.0.0.1:3100/api/health/live >/dev/null; then
@@ -102,11 +114,23 @@ jobs:
             sleep 1
           done
           echo "App failed to start"
+          tail -n 200 /tmp/bicuni-e2e-server.log || true
           exit 1
 
       - name: E2E OaaS
         if: hashFiles('e2e/oaas-academic-research.spec.ts') != ''
-        run: npx playwright test e2e/oaas-academic-research.spec.ts --project=desktop
+        run: |
+          set -euo pipefail
+          test -f e2e/oaas-academic-research.spec.ts
+          test -f e2e/oaas-outcomes-responsive.spec.ts
+          echo "Running Playwright files:"
+          echo " - e2e/oaas-academic-research.spec.ts"
+          echo " - e2e/oaas-outcomes-responsive.spec.ts"
+          npx playwright test \
+            e2e/oaas-academic-research.spec.ts \
+            e2e/oaas-outcomes-responsive.spec.ts \
+            --project=desktop \
+            --reporter=list
         env:
           PLAYWRIGHT_BASE_URL: http://127.0.0.1:3100
 
@@ -118,6 +142,7 @@ jobs:
           path: |
             test-results/
             playwright-report/
+            /tmp/bicuni-e2e-server.log
           if-no-files-found: ignore
 
       - name: Stop app

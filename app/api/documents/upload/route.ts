@@ -3,7 +3,7 @@ import { z } from "zod";
 import { auth } from "@/auth";
 import { db } from "@/lib/db/client";
 import { denyIfRateLimited, requestIdentity } from "@/lib/auth/rate-limit";
-import { hasActiveSubscription } from "@/lib/subscriptions/service";
+import { hasProductAccess } from "@/lib/oaas/entitlements";
 import { privateStorage, safeObjectKey } from "@/lib/storage";
 import { documentUploadSchema } from "@/lib/validators/document";
 import { assertCanCreate, assertInstitutionHierarchy, slugify } from "@/lib/documents/document-service";
@@ -17,8 +17,8 @@ export async function POST(request: Request) {
   const session = await auth();
   if (!session?.user) return NextResponse.json({ error: "Non authentifié." }, { status: 401 });
   assertCanCreate(session.user);
-  if (session.user.role !== "SUPER_ADMIN" && !await hasActiveSubscription(session.user.id)) {
-    return NextResponse.json({ error: "Abonnement actif requis." }, { status: 403 });
+  if (session.user.role !== "SUPER_ADMIN" && !await hasProductAccess(session.user.id)) {
+    return NextResponse.json({ error: "Abonnement ou mission OaaS active requis." }, { status: 403 });
   }
   const limited = await denyIfRateLimited(`upload:${session.user.id}:${requestIdentity(request)}`, 20, 60_000);
   if (limited) return limited;

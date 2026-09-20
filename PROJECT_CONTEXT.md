@@ -16,24 +16,21 @@ L'objectif est de construire un produit réel, fiable, monétisable et scalable.
 
 ## Business model
 
-Point d'entrée envisagé : abonnement à partir de **2 USD/mois**.
+Modèle principal : **OaaS — Agentic Outcome-as-a-Service**.
 
-Le produit doit pouvoir gérer progressivement :
-- abonnements ;
-- plans ;
-- transactions ;
-- factures ;
-- coupons ;
-- remboursements ;
-- rapports financiers ;
-- paramètres de paiement ;
-- journaux d'audit.
+Le client commande un résultat académique ou documentaire précis (mission), paie un acompte/jalon/solde, et reçoit un livrable vérifié avec preuves.
 
-Paiements envisagés :
-- Stripe ;
-- M-Pesa ;
-- Airtel Money ;
-- Orange Money.
+Les abonnements restent une offre secondaire pour :
+- stockage ;
+- support ;
+- priorité ;
+- capacité réservée ;
+- accès institutionnel ;
+- maintenance / conservation.
+
+Paiements :
+- Stripe (carte, mode test jusqu’à validation production) ;
+- M-Pesa / RAWBANK via passerelle CLEVONE manuelle contrôlée.
 
 ## Back Office
 

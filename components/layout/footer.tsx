@@ -5,7 +5,7 @@ import { Logo } from "@/components/logo";
 const columns = [
   { title: "Explorer", links: [["Bibliothèque", "/library"], ["Recherche", "/search"], ["Documents", "/documents"], ["Universités", "/universities"]] },
   { title: "Publier", links: [["Déposer un document", "/documents/upload"], ["Espace académique", "/dashboard"], ["Actualité", "/news"]] },
-  { title: "BICUNI", links: [["Plans", "/pricing"], ["Connexion", "/login"], ["Inscription", "/signup"]] },
+  { title: "BICUNI", links: [["Résultats", "/outcomes"], ["Abonnements", "/pricing"], ["Connexion", "/login"], ["Inscription", "/signup"]] },
 ] as const;
 
 export function Footer() {
