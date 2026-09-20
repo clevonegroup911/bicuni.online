@@ -24,8 +24,8 @@ comme validée au démarrage.
 | `REDIS_COMMAND_TIMEOUT_MS` | non | O web | client Redis | configuration | entier positif, repli 500 ms |
 | `TRUSTED_PROXY_STRATEGY` | non | R web | identité réseau et audit | configuration | `cloud-run` en staging/production, `loopback` en local; valeurs inconnues refusées au profit du défaut sûr |
 | `GOOGLE_CLOUD_PROJECT` | non | C web si documents privés | SDK GCS | configuration | SDK; contrôle au démarrage à ajouter |
-| `GCS_BUCKET` | non | C web si documents privés | stockage documents | configuration | présence au premier usage |
-| `GCS_BUCKET_NAME` | non | alias legacy Cloud Run | **désaligné** — l’app lit `GCS_BUCKET` | configuration Cloud Run | à mapper vers `GCS_BUCKET` (alias ou sync) ; ne pas toucher la prod dans ce lot |
+| `GCS_BUCKET` | non | C web si documents privés | stockage documents | configuration | **nom canonique** ; présence au premier usage |
+| `GCS_BUCKET_NAME` | non | alias legacy Cloud Run | repli temporaire si `GCS_BUCKET` absent | configuration Cloud Run | alias jusqu’au **2026-12-31** ; staging injecte uniquement `GCS_BUCKET` ; ne pas toucher la prod dans le lot staging-readiness |
 | `GCS_PUBLIC_ORIGIN` | non | O web | CSP | configuration | origine HTTPS uniquement, sinon ignorée |
 | `DOCUMENT_MAX_UPLOAD_BYTES` | non | R web | validation serveur upload | configuration | entier positif à valider au démarrage; valeur invalide est actuellement dangereuse |
 | `NEXT_PUBLIC_DOCUMENT_MAX_UPLOAD_BYTES` | non | R build/web | UI upload | configuration de build | public; doit égaler la limite serveur |

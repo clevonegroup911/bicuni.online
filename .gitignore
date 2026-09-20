@@ -35,3 +35,15 @@ node_modules/
 credentials.json
 service-account*.json
 .tmp/
+
+# Terraform (staging readiness)
+**/.terraform/
+**/*.tfplan
+**/*.tfstate
+**/*.tfstate.*
+crash.log
+crash.*.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json

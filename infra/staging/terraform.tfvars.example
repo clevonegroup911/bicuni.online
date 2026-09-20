@@ -1,0 +1,20 @@
+# Fictitious / non-mutating plan values only.
+# NEVER put real secrets, passwords, or production connection strings here.
+
+project_id               = "bicuni-504414"
+region                   = "europe-west1"
+environment              = "staging"
+name_prefix              = "bicuni-staging"
+cloud_run_service_name   = "bicuni-staging"
+cloud_sql_instance_name  = "bicuni-staging-postgres"
+gcs_bucket_name          = "bicuni-staging-storage-504414"
+cloud_run_image          = "europe-west1-docker.pkg.dev/bicuni-504414/bicuni/bicuni-staging:plan-only-not-real"
+cloud_run_min_instances  = 0
+cloud_run_max_instances  = 3
+cloud_sql_tier           = "db-f1-micro"
+cloud_sql_disk_gb        = 20
+redis_enabled            = false
+public_app_host          = "staging.bicuni.online"
+allow_unauthenticated    = false
+monthly_budget_usd       = 80
+billing_account_id       = ""
