@@ -10,6 +10,7 @@ resource "google_sql_database_instance" "staging" {
   project          = var.project_id
 
   settings {
+    edition           = "ENTERPRISE"
     tier              = var.cloud_sql_tier
     availability_type = "ZONAL"
     disk_size         = var.cloud_sql_disk_gb

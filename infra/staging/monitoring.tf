@@ -35,9 +35,14 @@ resource "google_monitoring_alert_policy" "staging_cloud_run_5xx" {
 }
 
 resource "google_billing_budget" "staging" {
+  provider        = google.billing
   count           = var.billing_account_id == "" ? 0 : 1
   billing_account = var.billing_account_id
   display_name    = "bicuni-staging-monthly-cap"
+
+  budget_filter {
+    projects = ["projects/${var.project_number}"]
+  }
 
   amount {
     specified_amount {
@@ -50,7 +55,7 @@ resource "google_billing_budget" "staging" {
     threshold_percent = 0.5
   }
   threshold_rules {
-    threshold_percent = 0.9
+    threshold_percent = 0.8
   }
   threshold_rules {
     threshold_percent = 1.0
