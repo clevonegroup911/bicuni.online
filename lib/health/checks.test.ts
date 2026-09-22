@@ -81,6 +81,22 @@ describe("readinessReport", () => {
     expect(report.dependencies.redis).toBe("skipped");
   });
 
+  it("utilise BICUNI_ENV staging lorsque NODE_ENV reste production", async () => {
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("BICUNI_ENV", "staging");
+    delete process.env.REDIS_URL;
+
+    const report = await readinessReport({
+      database: async () => true,
+    });
+
+    expect(report.ready).toBe(true);
+    expect(report.dependencies).toEqual({
+      database: "ok",
+      redis: "skipped",
+    });
+  });
+
   it("donne priorité à l’environnement explicite sur BICUNI_ENV", () => {
     vi.stubEnv("BICUNI_ENV", "staging");
     delete process.env.REDIS_URL;
