@@ -18,7 +18,10 @@ async function withTimeout<T>(operation: Promise<T>, timeoutMs: number) {
     return await Promise.race([
       operation,
       new Promise<never>((_, reject) => {
-        timer = setTimeout(() => reject(new Error("Readiness check timed out.")), timeoutMs);
+        timer = setTimeout(
+          () => reject(new Error("Readiness check timed out.")),
+          timeoutMs,
+        );
       }),
     ]);
   } finally {
@@ -61,17 +64,27 @@ async function pingConfiguredRedis() {
   await client.ping();
 }
 
-export function redisRequiredForReadiness(environment: string | undefined = process.env.NODE_ENV) {
-  return environment === "production" || Boolean(process.env.REDIS_URL?.trim());
+export function redisRequiredForReadiness(environment?: string) {
+  const effectiveEnvironment =
+    environment ?? process.env.BICUNI_ENV ?? process.env.NODE_ENV;
+
+  return (
+    effectiveEnvironment === "production" ||
+    Boolean(process.env.REDIS_URL?.trim())
+  );
 }
 
-export async function readinessReport(input: {
-  environment?: string;
-  database?: () => Promise<boolean>;
-  redis?: () => Promise<boolean>;
-} = {}): Promise<ReadinessReport> {
+export async function readinessReport(
+  input: {
+    environment?: string;
+    database?: () => Promise<boolean>;
+    redis?: () => Promise<boolean>;
+  } = {},
+): Promise<ReadinessReport> {
   const environment = input.environment ?? process.env.NODE_ENV;
-  const databaseOk = await (input.database ?? (() => checkDatabaseReadiness()))();
+  const databaseOk = await (
+    input.database ?? (() => checkDatabaseReadiness())
+  )();
   let redis: DependencyStatus = "skipped";
   if (redisRequiredForReadiness(environment)) {
     const redisOk = process.env.REDIS_URL?.trim()
