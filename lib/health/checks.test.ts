@@ -1,5 +1,10 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { checkDatabaseReadiness, checkRedisReadiness, readinessReport, redisRequiredForReadiness } from "./checks";
+import {
+  checkDatabaseReadiness,
+  checkRedisReadiness,
+  readinessReport,
+  redisRequiredForReadiness,
+} from "./checks";
 
 afterEach(() => {
   vi.useRealTimers();
@@ -13,28 +18,36 @@ describe("checkDatabaseReadiness", () => {
   });
 
   it("échoue sans exposer l’erreur de connexion", async () => {
-    await expect(checkDatabaseReadiness(async () => {
-      throw new Error("postgresql://secret@database.example/bicuni");
-    })).resolves.toBe(false);
+    await expect(
+      checkDatabaseReadiness(async () => {
+        throw new Error("postgresql://secret@database.example/bicuni");
+      }),
+    ).resolves.toBe(false);
   });
 
   it("borne le temps de la vérification", async () => {
     const started = Date.now();
-    await expect(checkDatabaseReadiness(() => new Promise(() => undefined), 50)).resolves.toBe(false);
+    await expect(
+      checkDatabaseReadiness(() => new Promise(() => undefined), 50),
+    ).resolves.toBe(false);
     expect(Date.now() - started).toBeLessThan(1500);
   }, 5000);
 });
 
 describe("checkRedisReadiness", () => {
   it("échoue de manière bornée sans renvoyer l’URL Redis", async () => {
-    await expect(checkRedisReadiness(async () => {
-      throw new Error("redis://secret@redis.example:6379/0");
-    })).resolves.toBe(false);
+    await expect(
+      checkRedisReadiness(async () => {
+        throw new Error("redis://secret@redis.example:6379/0");
+      }),
+    ).resolves.toBe(false);
   });
 
   it("supporte des sondes répétées et concurrentes sans état partagé divergent", async () => {
     const ping = vi.fn(async () => "PONG");
-    const results = await Promise.all(Array.from({ length: 12 }, () => checkRedisReadiness(ping, 200)));
+    const results = await Promise.all(
+      Array.from({ length: 12 }, () => checkRedisReadiness(ping, 200)),
+    );
     expect(results).toEqual(Array(12).fill(true));
     expect(ping).toHaveBeenCalledTimes(12);
   });
@@ -50,7 +63,10 @@ describe("readinessReport", () => {
     });
     expect(redisRequiredForReadiness("production")).toBe(true);
     expect(report.ready).toBe(false);
-    expect(report.dependencies).toEqual({ database: "ok", redis: "unavailable" });
+    expect(report.dependencies).toEqual({
+      database: "ok",
+      redis: "unavailable",
+    });
     expect(JSON.stringify(report)).not.toMatch(/secret|redis:\/\//i);
   });
 
@@ -63,5 +79,13 @@ describe("readinessReport", () => {
     });
     expect(report.ready).toBe(true);
     expect(report.dependencies.redis).toBe("skipped");
+  });
+
+  it("donne priorité à l’environnement explicite sur BICUNI_ENV", () => {
+    vi.stubEnv("BICUNI_ENV", "staging");
+    delete process.env.REDIS_URL;
+
+    expect(redisRequiredForReadiness("production")).toBe(true);
+    expect(redisRequiredForReadiness("staging")).toBe(false);
   });
 });
