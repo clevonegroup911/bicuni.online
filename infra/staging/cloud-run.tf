@@ -37,6 +37,11 @@ resource "google_cloud_run_v2_service" "staging" {
       }
 
       env {
+        name  = "BICUNI_ENV"
+        value = "staging"
+      }
+
+      env {
         name  = "TRUSTED_PROXY_STRATEGY"
         value = "cloud-run"
       }
