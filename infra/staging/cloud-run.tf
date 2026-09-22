@@ -116,11 +116,13 @@ resource "google_cloud_run_v2_service" "staging" {
 
   lifecycle {
     prevent_destroy = true
-    ignore_changes  = [client, client_version]
+    ignore_changes  = [client, client_version, scaling]
   }
 
   depends_on = [
     google_secret_manager_secret_iam_member.staging_secret_access,
+    google_secret_manager_secret_version.database_url,
+    google_secret_manager_secret_version.auth_secret,
     google_project_iam_member.staging_sql_client,
   ]
 }

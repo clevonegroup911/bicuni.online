@@ -47,3 +47,7 @@ override.tf
 override.tf.json
 *_override.tf
 *_override.tf.json
+
+# Terraform local variables / secrets
+**/terraform.tfvars
+**/*.auto.tfvars

@@ -170,3 +170,14 @@ variable "labels" {
     cost_center = "bicuni-staging"
   }
 }
+
+
+variable "project_number" {
+  type        = string
+  description = "Numeric GCP project number used to scope the staging budget."
+
+  validation {
+    condition     = can(regex("^[0-9]+$", var.project_number))
+    error_message = "project_number must contain digits only."
+  }
+}
