@@ -81,7 +81,8 @@ export async function readinessReport(
     redis?: () => Promise<boolean>;
   } = {},
 ): Promise<ReadinessReport> {
-  const environment = input.environment ?? process.env.NODE_ENV;
+  const environment =
+    input.environment ?? process.env.BICUNI_ENV ?? process.env.NODE_ENV;
   const databaseOk = await (
     input.database ?? (() => checkDatabaseReadiness())
   )();
