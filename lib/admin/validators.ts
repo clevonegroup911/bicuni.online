@@ -19,6 +19,7 @@ export const createAdminSchema = z.object({
 export const updateAdminUserSchema = z.discriminatedUnion("action", [
   z.object({ action: z.literal("role"), role: z.nativeEnum(Role) }),
   z.object({ action: z.literal("status"), status: z.enum(["ACTIVE", "SUSPENDED", "DELETED"]) }),
+  z.object({ action: z.literal("resend_verification") }),
 ]);
 
 const optionalUrl = z

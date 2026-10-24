@@ -4,9 +4,18 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { requirePermission } from "@/lib/auth/guards";
 import { db } from "@/lib/db/client";
 
-export default async function AuditPage() {
+export default async function AuditPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ entityId?: string }>;
+}) {
   const user = await requirePermission("admin:audit:read");
+  const params = await searchParams;
+  const entityId = params.entityId?.trim() || undefined;
   const logs = await db.auditLog.findMany({
+    where: entityId
+      ? { OR: [{ entityId }, { actorId: entityId }] }
+      : undefined,
     include: { actor: { select: { name: true, email: true, role: true } } },
     orderBy: { createdAt: "desc" },
     take: 100,
@@ -17,7 +26,10 @@ export default async function AuditPage() {
         <header className="admin-title">
           <span className="eyebrow">Traçabilité</span>
           <h1>Journaux d’audit</h1>
-          <p>Les secrets, mots de passe et tokens ne sont jamais enregistrés. Les 100 événements les plus récents sont affichés.</p>
+          <p>
+            Les secrets, mots de passe et tokens ne sont jamais enregistrés. Les 100 événements les plus récents sont affichés
+            {entityId ? ` (filtre utilisateur ${entityId}).` : "."}
+          </p>
         </header>
         {logs.length ? (
           <div className="admin-table-wrap glass">

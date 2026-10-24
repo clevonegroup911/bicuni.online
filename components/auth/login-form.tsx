@@ -5,13 +5,23 @@ import Link from "next/link";
 import { signIn } from "next-auth/react";
 import { FormEvent, useState } from "react";
 import { AuthShell } from "@/components/auth/auth-shell";
+import { ResendVerificationForm } from "@/components/auth/resend-verification-form";
 import { Field } from "@/components/ui/field";
 import { signInFailureMessage } from "@/lib/auth/sign-in-feedback";
 
-export function LoginForm({ callbackUrl, verified }: { callbackUrl: string; verified: boolean }) {
+export function LoginForm({
+  callbackUrl,
+  verified,
+  accountUnavailable = false,
+}: {
+  callbackUrl: string;
+  verified: boolean;
+  accountUnavailable?: boolean;
+}) {
   const [show, setShow] = useState(false);
   const [error, setError] = useState("");
   const [pending, setPending] = useState(false);
+  const [showResend, setShowResend] = useState(false);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -44,6 +54,11 @@ export function LoginForm({ callbackUrl, verified }: { callbackUrl: string; veri
       footer={<>Nouveau sur BICUNI ? <Link href={`/signup?next=${encodeURIComponent(callbackUrl)}`} className="auth-link">Créer un compte</Link></>}
     >
       {verified && <p role="status" className="form-success">Adresse vérifiée. Vous pouvez vous connecter.</p>}
+      {accountUnavailable && (
+        <p role="status" className="form-error">
+          Ce compte est indisponible. S’il est en attente de vérification, renvoyez le lien ci-dessous.
+        </p>
+      )}
       {error && <p id="login-error" role="alert" className="form-error">{error}</p>}
       <form method="post" action="/login" onSubmit={submit} className="auth-form" autoComplete="on">
         <Field id="email" label="Adresse e-mail">
@@ -63,6 +78,12 @@ export function LoginForm({ callbackUrl, verified }: { callbackUrl: string; veri
         <Link href="/forgot-password" className="auth-link">Mot de passe oublié ?</Link>
         <button className="button" type="submit" disabled={pending} aria-busy={pending}>{pending ? "Connexion…" : "Se connecter"}</button>
       </form>
+      <p className="muted">
+        <button type="button" className="auth-link" onClick={() => setShowResend((value) => !value)}>
+          Renvoyer le lien de vérification
+        </button>
+      </p>
+      {showResend && <ResendVerificationForm compact />}
     </AuthShell>
   );
 }
