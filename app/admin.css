@@ -40,8 +40,12 @@
 .admin-status.suspended,.admin-status.deleted,.admin-status.archived{color:#ff7c86;background:rgba(220,38,38,.12)}
 .admin-status.pending{color:#fbbf24;background:rgba(245,158,11,.12)}
 .admin-status.active,.admin-status.published,.admin-status.approved{color:#86efac;background:rgba(16,185,129,.12)}
-.admin-user-actions{display:flex;align-items:center;gap:7px;min-width:310px}
+.admin-user-actions{display:flex;flex-wrap:wrap;align-items:center;gap:7px;min-width:310px;max-width:420px}
 .admin-user-actions .input{min-width:150px}
+.admin-user-events{width:100%;margin-top:6px;padding:8px 10px;border:1px solid var(--line);border-radius:10px;background:rgba(9,13,22,.55)}
+.admin-user-events ul{margin:0 0 8px;padding-left:16px;display:grid;gap:4px}
+.admin-user-events li{font-size:11px;color:var(--muted)}
+.admin-user-events code{color:#c7d2fe}
 .create-admin{padding:18px;margin-bottom:15px}
 .create-admin summary{cursor:pointer;font-weight:800}
 .create-admin form{margin-top:16px}

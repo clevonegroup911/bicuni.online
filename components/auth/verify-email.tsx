@@ -4,6 +4,7 @@ import { MailCheck } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { AuthShell } from "@/components/auth/auth-shell";
+import { ResendVerificationForm } from "@/components/auth/resend-verification-form";
 
 export function VerifyEmail({ token, email }: { token: string; email: string }) {
   const isComplete = Boolean(token && email);
@@ -36,6 +37,7 @@ export function VerifyEmail({ token, email }: { token: string; email: string }) 
       {state === "pending" ? <p role="status" className="muted">{message}</p> : (
         <p role="status" className={state === "error" ? "form-error" : "form-success"}>{message}</p>
       )}
+      {state === "error" && <ResendVerificationForm defaultEmail={email} compact />}
     </AuthShell>
   );
 }

@@ -6,7 +6,7 @@ import { CreateAdminForm } from "@/components/admin/create-admin-form";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Pagination, buildPageHref } from "@/components/ui/pagination";
 import { requirePermission } from "@/lib/auth/guards";
-import { AdminUserService } from "@/lib/admin/user-admin-service";
+import { AdminUserService, userStatusLabel } from "@/lib/admin/user-admin-service";
 
 export default async function AdminUsers({
   searchParams,
@@ -39,7 +39,9 @@ export default async function AdminUsers({
           </select>
           <select className="input" name="status" defaultValue={params.status ?? ""} aria-label="Statut">
             <option value="">Tous les statuts</option>
-            {Object.values(UserStatus).map((value) => <option key={value}>{value}</option>)}
+            {Object.values(UserStatus).map((value) => (
+              <option key={value} value={value}>{userStatusLabel(value)}</option>
+            ))}
           </select>
           <button className="button">Filtrer</button>
         </form>
@@ -62,7 +64,7 @@ export default async function AdminUsers({
                   <tr key={item.id}>
                     <td><strong>{item.name ?? "Sans nom"}</strong><small>{item.email}</small></td>
                     <td>{item.role}</td>
-                    <td><span className={`admin-status ${item.status.toLowerCase()}`}>{item.status}</span></td>
+                    <td><span className={`admin-status ${item.status.toLowerCase()}`}>{userStatusLabel(item.status)}</span></td>
                     <td>{item.createdAt.toLocaleDateString("fr-FR")}</td>
                     <td>{item.lastLoginAt?.toLocaleString("fr-FR") ?? "Jamais"}</td>
                     <td>

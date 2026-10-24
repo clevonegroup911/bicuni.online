@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
-import { db } from "@/lib/db/client";
-import { hashToken } from "@/lib/auth/tokens";
+import { verifyEmailAddress } from "@/lib/auth/email-verification";
 
 export async function POST(request: Request) {
   const body = await request.json().catch(() => null) as { token?: unknown; email?: unknown } | null;
@@ -8,20 +7,9 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Lien de vérification invalide." }, { status: 400 });
   }
 
-  const email = body.email.trim().toLowerCase();
-  const tokenHash = hashToken(body.token);
-  const verification = await db.verificationToken.findUnique({
-    where: { token: tokenHash },
-  });
-
-  if (!verification || verification.identifier !== email || verification.expires <= new Date()) {
-    return NextResponse.json({ error: "Ce lien est invalide ou expiré." }, { status: 400 });
+  const result = await verifyEmailAddress(body.email, body.token);
+  if (!result.ok) {
+    return NextResponse.json({ error: result.error }, { status: result.status });
   }
-
-  await db.$transaction([
-    db.user.update({ where: { email }, data: { emailVerified: new Date(), status: "ACTIVE" } }),
-    db.verificationToken.delete({ where: { token: tokenHash } }),
-  ]);
-
-  return NextResponse.json({ message: "Adresse vérifiée. Vous pouvez vous connecter." });
+  return NextResponse.json({ message: result.message });
 }

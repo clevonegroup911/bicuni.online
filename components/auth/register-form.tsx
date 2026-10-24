@@ -4,6 +4,7 @@ import { Eye, EyeOff, UserPlus } from "lucide-react";
 import Link from "next/link";
 import { FormEvent, useState } from "react";
 import { AuthShell } from "@/components/auth/auth-shell";
+import { ResendVerificationForm } from "@/components/auth/resend-verification-form";
 import { Field } from "@/components/ui/field";
 
 export function RegisterForm({ callbackUrl = "/dashboard" }: { callbackUrl?: string }) {
@@ -45,6 +46,7 @@ export function RegisterForm({ callbackUrl = "/dashboard" }: { callbackUrl?: str
       {message ? (
         <>
           <p role="status" className="form-success">{message}</p>
+          <ResendVerificationForm compact />
           <Link href={loginHref} className="button secondary">Se connecter</Link>
         </>
       ) : (

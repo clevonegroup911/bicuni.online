@@ -6,9 +6,15 @@ export const metadata: Metadata = { title: "Connexion" };
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ next?: string; verified?: string }>;
+  searchParams: Promise<{ next?: string; verified?: string; account?: string }>;
 }) {
   const params = await searchParams;
   const next = params.next?.startsWith("/") && !params.next.startsWith("//") ? params.next : "/dashboard";
-  return <LoginForm callbackUrl={next} verified={params.verified === "1"} />;
+  return (
+    <LoginForm
+      callbackUrl={next}
+      verified={params.verified === "1"}
+      accountUnavailable={params.account === "unavailable"}
+    />
+  );
 }
